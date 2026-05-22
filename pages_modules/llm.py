@@ -201,8 +201,8 @@ def show(model_preselected: str = None):
         # st.stop()
         st.markdown("---")
         if st.button("🏠 返回首页", key="llm_back_home"):
-           st.session_state.current_page = "home"
-           st.rerun()
+            st.session_state.current_page = "home"
+            st.rerun()
         st.markdown("---")
         return False  # 直接返回，不执行后面的对话逻辑
 
