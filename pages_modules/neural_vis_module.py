@@ -16,43 +16,22 @@ import time
 import numpy as np
 import streamlit as st
 import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from matplotlib.patches import Circle
 
-# ==================== 跨平台中文字体设置 ====================
-import matplotlib
-import matplotlib.font_manager as _fm
+# 直接指定云端和本地都存在的字体路径
+font_path = '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc'
+if not os.path.exists(font_path):
+    # 本地 Windows 的回退
+    font_path = 'C:/Windows/Fonts/msyh.ttc'
 
-matplotlib.rcParams["axes.unicode_minus"] = False
-
-# 找到系统中实际存在的中文字体文件（与 ML 模块 PIL _load_font 路径一致）
-_CN_FONT_FILE = None
-for _fp in [
-    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-    "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
-    "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
-    "C:/Windows/Fonts/msyh.ttc",
-    "C:/Windows/Fonts/simhei.ttf",
-]:
-    if os.path.exists(_fp):
-        _CN_FONT_FILE = _fp
-        break
-
-# 同时注册到 fontManager 作为 legend / colorbar 等无法传 fontproperties 的默认回退
-if _CN_FONT_FILE:
-    _fm.fontManager.addfont(_CN_FONT_FILE)
-    _cn_name = _fm.FontProperties(fname=_CN_FONT_FILE).get_name()
-    matplotlib.rcParams["font.sans-serif"] = [_cn_name, "DejaVu Sans"]
-
-
-def _cn_fp(size, bold=False):
-    """返回中文 FontProperties（直接按文件路径加载，跳过字体名匹配）。"""
-    if _CN_FONT_FILE:
-        return _fm.FontProperties(fname=_CN_FONT_FILE, size=size,
-                                  weight='bold' if bold else 'normal')
-    return None
-
-
+if os.path.exists(font_path):
+    from matplotlib.font_manager import FontProperties
+    fp = FontProperties(fname=font_path)
+    plt.rcParams['font.family'] = fp.get_name()
+else:
+    plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['axes.unicode_minus'] = False
 # =============================================================================
 # 1. 核心算法类（从 NeuralVis 移植，保留完整功能，禁止修改算法逻辑）
 # =============================================================================
