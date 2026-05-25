@@ -113,7 +113,7 @@ def load_image(source: str, upload_file=None) -> Image.Image:
     elif source == "具体图像":
         # 多路径查找 assets/1.jpg（兼容本地开发与 Streamlit Cloud）
         candidates = [
-            _FIXED_IMAGE_NAME,                                    # 项目根目录 (Cloud)
+            Path(_FIXED_IMAGE_NAME),                                    # 项目根目录 (Cloud)
             Path(__file__).resolve().parent.parent / _FIXED_IMAGE_NAME,        # pages_modules/ 上级
         ]
         fixed_path = None
