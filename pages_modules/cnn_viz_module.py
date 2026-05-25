@@ -25,7 +25,7 @@ _CONV_KERNELS = {
     "锐化": np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]], dtype=np.float32),
 }
 _COMBINED_KERNEL_NAME = "组合边缘检测（Sobel X+Y）"
-_FIXED_IMAGE_NAME = "D:/Hhu/AI_vision_platform/assets/1.jpg"
+_FIXED_IMAGE_NAME = "assets/1.jpg"
 
 _PALETTE_BG_DARK = (26, 26, 26)               # #1a1a1a
 
