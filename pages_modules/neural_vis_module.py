@@ -19,24 +19,14 @@ import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 
-# ==================== 兼容 Linux / Windows 的中文字体设置 ====================
+# ==================== 跨平台中文字体设置 ====================
 import matplotlib
 import matplotlib.font_manager as _fm
-import glob as _glob
 
 matplotlib.rcParams["axes.unicode_minus"] = False
 
-# 1) 删除 matploblib 字体缓存，强制重新扫描系统字体（Streamlit Cloud 需要）
-_cache_dir = matplotlib.get_cachedir()
-for _pattern in ["fontlist*.json", "fontlist-v*.json"]:
-    for _f in _glob.glob(os.path.join(_cache_dir, _pattern)):
-        try:
-            os.remove(_f)
-        except OSError:
-            pass
-
-# 2) 查找系统中实际存在的中文字体文件
-_cn_font_file = None
+# 找到系统中实际存在的中文字体文件（与 ML 模块 PIL _load_font 路径一致）
+_CN_FONT_FILE = None
 for _fp in [
     "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
     "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
@@ -45,18 +35,22 @@ for _fp in [
     "C:/Windows/Fonts/simhei.ttf",
 ]:
     if os.path.exists(_fp):
-        _cn_font_file = _fp
+        _CN_FONT_FILE = _fp
         break
 
-# 3) 注册字体文件并获取实际名称，设为默认字体
-if _cn_font_file:
-    _fm.fontManager.addfont(_cn_font_file)
-    _cn_name = _fm.FontProperties(fname=_cn_font_file).get_name()
+# 同时注册到 fontManager 作为 legend / colorbar 等无法传 fontproperties 的默认回退
+if _CN_FONT_FILE:
+    _fm.fontManager.addfont(_CN_FONT_FILE)
+    _cn_name = _fm.FontProperties(fname=_CN_FONT_FILE).get_name()
     matplotlib.rcParams["font.sans-serif"] = [_cn_name, "DejaVu Sans"]
-else:
-    matplotlib.rcParams["font.sans-serif"] = [
-        "SimHei", "Microsoft YaHei", "DejaVu Sans"
-    ]
+
+
+def _cn_fp(size, bold=False):
+    """返回中文 FontProperties（直接按文件路径加载，跳过字体名匹配）。"""
+    if _CN_FONT_FILE:
+        return _fm.FontProperties(fname=_CN_FONT_FILE, size=size,
+                                  weight='bold' if bold else 'normal')
+    return None
 
 
 # =============================================================================
@@ -337,17 +331,17 @@ def plot_data_distribution(X, y):
             X[:, 0], X[:, 1], c=y.ravel(), cmap="coolwarm",
             edgecolors="k", alpha=0.7, s=50
         )
-        ax.set_xlabel("特征 1", fontsize=11)
-        ax.set_ylabel("特征 2", fontsize=11)
+        ax.set_xlabel("特征 1", fontsize=11, fontproperties=_cn_fp(11))
+        ax.set_ylabel("特征 2", fontsize=11, fontproperties=_cn_fp(11))
         plt.colorbar(scatter, ax=ax, label="标签")
     else:
         ax.scatter(
             X[:, 0], y.ravel(), c=y.ravel(), cmap="coolwarm",
             edgecolors="k", alpha=0.7, s=50
         )
-        ax.set_xlabel("特征 1", fontsize=11)
-        ax.set_ylabel("标签", fontsize=11)
-    ax.set_title("训练数据分布", fontsize=13, fontweight="bold", color="#1A7EC1")
+        ax.set_xlabel("特征 1", fontsize=11, fontproperties=_cn_fp(11))
+        ax.set_ylabel("标签", fontsize=11, fontproperties=_cn_fp(11))
+    ax.set_title("训练数据分布", color="#1A7EC1", fontproperties=_cn_fp(13, bold=True))
     ax.grid(True, alpha=0.3)
     ax.set_facecolor("#F8FAFC")
     fig.patch.set_facecolor("white")
@@ -360,7 +354,7 @@ def plot_training_curves(history):
     fig, ax1 = plt.subplots(figsize=(8, 4.5), dpi=_get_fig_dpi())
     epochs = history["epoch"]
     if not epochs:
-        ax1.text(0.5, 0.5, "暂无训练数据", ha="center", va="center", fontsize=14, color="#999")
+        ax1.text(0.5, 0.5, "暂无训练数据", ha="center", va="center", color="#999", fontproperties=_cn_fp(14))
         ax1.set_xlim(0, 1)
         ax1.set_ylim(0, 1)
         ax1.axis("off")
@@ -369,8 +363,8 @@ def plot_training_curves(history):
 
     color_loss = "#1A7EC1"
     ax1.plot(epochs, history["loss"], color=color_loss, linewidth=2, label="损失值", marker="o", markersize=3)
-    ax1.set_xlabel("轮次 (Epoch)", fontsize=11)
-    ax1.set_ylabel("损失值 (Loss)", color=color_loss, fontsize=11)
+    ax1.set_xlabel("轮次 (Epoch)", fontsize=11, fontproperties=_cn_fp(11))
+    ax1.set_ylabel("损失值 (Loss)", color=color_loss, fontsize=11, fontproperties=_cn_fp(11))
     ax1.tick_params(axis="y", labelcolor=color_loss)
     ax1.grid(True, alpha=0.3)
 
@@ -378,16 +372,16 @@ def plot_training_curves(history):
         ax2 = ax1.twinx()
         color_acc = "#F39C12"
         ax2.plot(epochs, history["acc"], color=color_acc, linewidth=2, label="准确率", marker="s", markersize=3)
-        ax2.set_ylabel("准确率 (Accuracy)", color=color_acc, fontsize=11)
+        ax2.set_ylabel("准确率 (Accuracy)", color=color_acc, fontsize=11, fontproperties=_cn_fp(11))
         ax2.tick_params(axis="y", labelcolor=color_acc)
         ax2.set_ylim(0, 1.05)
         lines1, labels1 = ax1.get_legend_handles_labels()
         lines2, labels2 = ax2.get_legend_handles_labels()
-        ax1.legend(lines1 + lines2, labels1 + labels2, loc="center right")
+        ax1.legend(lines1 + lines2, labels1 + labels2, loc="center right", prop=_cn_fp(9))
     else:
-        ax1.legend(loc="upper right")
+        ax1.legend(loc="upper right", prop=_cn_fp(9))
 
-    ax1.set_title("训练过程曲线", fontsize=13, fontweight="bold", color="#1A7EC1")
+    ax1.set_title("训练过程曲线", color="#1A7EC1", fontproperties=_cn_fp(13, bold=True))
     ax1.set_facecolor("#F8FAFC")
     fig.patch.set_facecolor("white")
     plt.tight_layout()
@@ -580,7 +574,7 @@ def plot_network_structure(layer_sizes, mode="weights", weights=None, activation
         ax.text(
             x, 0.01, label,
             ha="center", va="top", fontsize=10, fontweight="bold",
-            color="#1A7EC1"
+            color="#1A7EC1", fontproperties=_cn_fp(10, bold=True)
         )
 
     # 模式标题
@@ -590,7 +584,7 @@ def plot_network_structure(layer_sizes, mode="weights", weights=None, activation
         "backward": "反向传播可视化 — 神经元与连线对应梯度大小（红色系）",
         "weights": "权重可视化 — 正权重偏蓝，负权重偏红，连线粗细映射权重绝对值",
     }
-    ax.set_title(mode_titles.get(mode, ""), fontsize=12, fontweight="bold", color="#0F5B9E", pad=10)
+    ax.set_title(mode_titles.get(mode, ""), fontsize=12, fontweight="bold", color="#0F5B9E", pad=10, fontproperties=_cn_fp(12, bold=True))
 
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
@@ -606,7 +600,7 @@ def plot_weight_heatmaps(weights):
     n = len(weights)
     if n == 0:
         fig, ax = plt.subplots(figsize=(5, 4))
-        ax.text(0.5, 0.5, "暂无权重数据", ha="center", va="center", fontsize=14, color="#999")
+        ax.text(0.5, 0.5, "暂无权重数据", ha="center", va="center", color="#999", fontproperties=_cn_fp(14))
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         ax.axis("off")
@@ -624,9 +618,9 @@ def plot_weight_heatmaps(weights):
     for i, (ax, w) in enumerate(zip(axes, weights)):
         vmax = np.max(np.abs(w))
         im = ax.imshow(w, cmap="RdBu_r", aspect="auto", vmin=-vmax, vmax=vmax)
-        ax.set_title(f"层 {i + 1} → {i + 2} 权重矩阵\n形状: {w.shape}", fontsize=10, color="#1A7EC1")
-        ax.set_xlabel("当前层神经元", fontsize=9)
-        ax.set_ylabel("前层神经元", fontsize=9)
+        ax.set_title(f"层 {i + 1} → {i + 2} 权重矩阵\n形状: {w.shape}", fontsize=10, color="#1A7EC1", fontproperties=_cn_fp(10))
+        ax.set_xlabel("当前层神经元", fontsize=9, fontproperties=_cn_fp(9))
+        ax.set_ylabel("前层神经元", fontsize=9, fontproperties=_cn_fp(9))
         plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
         ax.set_facecolor("#F8FAFC")
 
