@@ -111,12 +111,12 @@ def load_image(source: str, upload_file=None) -> Image.Image:
             st.info("当前未上传图片，已回退到 camera 示例图。")
             img = generate_demo_image("camera")
     elif source == "具体图像":
-        img_dir = Path(__file__).resolve().parent
-        fixed_path = img_dir / _FIXED_IMAGE_NAME
+        # 从项目根目录查找 assets/1.jpg
+        fixed_path = Path(__file__).resolve().parent.parent / _FIXED_IMAGE_NAME
         if fixed_path.exists():
             img = _to_rgb_safe(Image.open(fixed_path))
         else:
-            st.warning("未在 _internal 目录找到 1.jpg，已回退到 camera 示例图。")
+            st.warning("未找到 assets/1.jpg，已回退到 camera 示例图。")
             img = generate_demo_image("camera")
     elif source == "在线灰度图":
         try:

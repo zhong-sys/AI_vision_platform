@@ -20,7 +20,14 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 
 # ==================== 兼容 EXE 打包的中文字体设置 ====================
-matplotlib.rcParams["font.sans-serif"] = ["Noto Sans CJK SC", "Noto Sans CJK", "WenQuanYi Micro Hei", "SimHei", "Microsoft YaHei", "Arial Unicode MS"]
+# 重建字体管理器，确保 Linux / Streamlit Cloud 下 fonts-noto-cjk 生效
+import matplotlib.font_manager as _fm
+_fm.fontManager = _fm.FontManager()
+matplotlib.rcParams["font.sans-serif"] = [
+    "Noto Sans CJK SC", "Noto Sans CJK JP", "Noto Sans CJK",
+    "WenQuanYi Micro Hei", "Droid Sans Fallback",
+    "SimHei", "Microsoft YaHei", "DejaVu Sans",
+]
 matplotlib.rcParams["axes.unicode_minus"] = False
 
 
