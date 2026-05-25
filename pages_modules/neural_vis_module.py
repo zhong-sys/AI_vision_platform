@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 
 # ==================== 兼容 EXE 打包的中文字体设置 ====================
-matplotlib.rcParams["font.sans-serif"] = ["SimHei", "Microsoft YaHei", "Arial Unicode MS"]
+matplotlib.rcParams["font.sans-serif"] = ["Noto Sans CJK SC", "Noto Sans CJK", "WenQuanYi Micro Hei", "SimHei", "Microsoft YaHei", "Arial Unicode MS"]
 matplotlib.rcParams["axes.unicode_minus"] = False
 
 

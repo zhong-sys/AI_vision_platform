@@ -20,34 +20,42 @@ _FUTURE = (70, 70, 70)
 
 
 def _load_font(size: int):
-    candidates = [
-        "msyh.ttc",  # Microsoft YaHei (中文)
-        "msyhbd.ttc",
-        "simhei.ttf",
-        "simsun.ttc",
-        "arialuni.ttf",
-        "arial.ttf",
+    """跨平台字体加载，优先 Linux（Noto/WQY），回退 Windows。"""
+    font_paths = [
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",   # Linux / Streamlit Cloud
+        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+        "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+        "C:/Windows/Fonts/msyh.ttc",                               # Windows
+        "C:/Windows/Fonts/simhei.ttf",
+        "C:/Windows/Fonts/simsun.ttc",
     ]
-    windows_font_dir = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts")
-    for name in candidates:
+    for path in font_paths:
+        try:
+            return ImageFont.truetype(path, size=size)
+        except Exception:
+            continue
+    # 最后的回退：尝试裸文件名
+    for name in ["msyh.ttc", "simhei.ttf", "arial.ttf"]:
         try:
             return ImageFont.truetype(name, size)
         except Exception:
-            font_path = os.path.join(windows_font_dir, name)
-            try:
-                return ImageFont.truetype(font_path, size)
-            except Exception:
-                continue
+            continue
     return ImageFont.load_default()
 
 
 def _load_font_bold(size: int):
-    """标题加粗（微软雅黑粗体）；失败时回退 `_load_font`，保证中文可读。"""
-    win = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts", "msyhbd.ttc")
-    try:
-        return ImageFont.truetype(win, size)
-    except Exception:
-        return _load_font(size)
+    """标题加粗；优先 Linux Noto Bold / Windows msyhbd，回退普通字体。"""
+    bold_paths = [
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+        "C:/Windows/Fonts/msyhbd.ttc",
+    ]
+    for path in bold_paths:
+        try:
+            return ImageFont.truetype(path, size)
+        except Exception:
+            continue
+    return _load_font(size)
 
 
 def _draw_arrow(draw: ImageDraw.ImageDraw, p0: tuple, p1: tuple, color=(150, 150, 150), width=2, head_len: Optional[int] = None):

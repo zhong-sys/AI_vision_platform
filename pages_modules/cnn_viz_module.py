@@ -34,6 +34,32 @@ _POOL_SCAN_INTERVAL_SEC = 0.18  # 池化自动播放固定间隔（较慢，便�
 _CONV_DISPLAY_WIDTH = 300
 
 
+# ===================== 跨平台字体加载 =====================
+
+def _load_font(size: int):
+    """跨平台字体加载，优先 Linux（Noto/WQY），回退 Windows。"""
+    font_paths = [
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+        "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+        "C:/Windows/Fonts/msyh.ttc",
+        "C:/Windows/Fonts/simhei.ttf",
+        "C:/Windows/Fonts/simsun.ttc",
+    ]
+    for path in font_paths:
+        try:
+            return ImageFont.truetype(path, size=size)
+        except Exception:
+            continue
+    for name in ["msyh.ttc", "simhei.ttf", "arial.ttf"]:
+        try:
+            return ImageFont.truetype(name, size)
+        except Exception:
+            continue
+    return ImageFont.load_default()
+
+
 # ===================== 图像生成与加载 =====================
 
 def generate_demo_image(name: str, size: tuple = (128, 128)) -> Image.Image:
@@ -216,10 +242,7 @@ def draw_heatmap_3x3(patch: np.ndarray, scale: int = 60) -> Image.Image:
     vmin, vmax = patch.min(), patch.max()
     img = Image.new("RGB", (3 * scale, 3 * scale), (255, 255, 255))
     draw = ImageDraw.Draw(img)
-    try:
-        font = ImageFont.truetype("arial.ttf", max(10, scale // 4))
-    except Exception:
-        font = ImageFont.load_default()
+    font = _load_font(max(10, scale // 4))
     for i in range(3):
         for j in range(3):
             val = patch[i, j]
@@ -237,10 +260,7 @@ def draw_kernel_matrix(kernel: np.ndarray, scale: int = 60) -> Image.Image:
     """绘制 3×3 卷积核权重矩阵图。"""
     img = Image.new("RGB", (3 * scale, 3 * scale), (245, 245, 245))
     draw = ImageDraw.Draw(img)
-    try:
-        font = ImageFont.truetype("arial.ttf", max(10, scale // 4))
-    except Exception:
-        font = ImageFont.load_default()
+    font = _load_font(max(10, scale // 4))
     abs_max = max(abs(kernel.min()), abs(kernel.max()), 1e-6)
     for i in range(3):
         for j in range(3):
@@ -271,10 +291,7 @@ def draw_combined_kernel_matrix(scale: int = 60) -> Image.Image:
     height = max(sobel_x.height, sobel_y.height) + label_h
     canvas = Image.new("RGB", (width, height), (245, 245, 245))
     draw = ImageDraw.Draw(canvas)
-    try:
-        font = ImageFont.truetype("arial.ttf", max(11, scale // 4))
-    except Exception:
-        font = ImageFont.load_default()
+    font = _load_font(max(11, scale // 4))
     canvas.paste(sobel_x, (0, label_h))
     canvas.paste(sobel_y, (sobel_x.width + gap, label_h))
     draw.text((6, 4), "Sobel X", fill=(30, 41, 59), font=font)
@@ -289,12 +306,8 @@ def draw_elementwise_product(patch: np.ndarray, kernel: np.ndarray, scale: int =
     footer_h = max(30, scale // 2 + 12)
     img = Image.new("RGB", (3 * scale, 3 * scale + footer_h), (250, 250, 250))
     draw = ImageDraw.Draw(img)
-    try:
-        font = ImageFont.truetype("arial.ttf", max(10, scale // 4))
-        font_sum = ImageFont.truetype("arial.ttf", max(11, scale // 4 + 2))
-    except Exception:
-        font = ImageFont.load_default()
-        font_sum = font
+    font = _load_font(max(10, scale // 4))
+    font_sum = _load_font(max(11, scale // 4 + 2))
 
     abs_max = max(abs(product.min()), abs(product.max()), 1e-6)
     vmin, vmax = -abs_max, abs_max
@@ -480,12 +493,8 @@ def draw_layer_chain() -> Image.Image:
     total_h = box_size + margin * 2 + label_gap
     img = Image.new("RGB", (total_w, total_h), (15, 15, 15))
     draw = ImageDraw.Draw(img)
-    try:
-        font = ImageFont.truetype("arial.ttf", 20)
-        font_large = ImageFont.truetype("arial.ttf", 22)
-    except Exception:
-        font = ImageFont.load_default()
-        font_large = font
+    font = _load_font(20)
+    font_large = _load_font(22)
 
     colors = [(191, 219, 254), (187, 247, 208), (253, 230, 138), (187, 247, 208), (253, 230, 138)]
     max_stage_size = max(s for _, s in stages)
