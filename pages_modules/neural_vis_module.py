@@ -19,16 +19,44 @@ import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 
-# ==================== 兼容 EXE 打包的中文字体设置 ====================
-# 重建字体管理器，确保 Linux / Streamlit Cloud 下 fonts-noto-cjk 生效
+# ==================== 兼容 Linux / Windows 的中文字体设置 ====================
+import matplotlib
 import matplotlib.font_manager as _fm
-_fm.fontManager = _fm.FontManager()
-matplotlib.rcParams["font.sans-serif"] = [
-    "Noto Sans CJK SC", "Noto Sans CJK JP", "Noto Sans CJK",
-    "WenQuanYi Micro Hei", "Droid Sans Fallback",
-    "SimHei", "Microsoft YaHei", "DejaVu Sans",
-]
+import glob as _glob
+
 matplotlib.rcParams["axes.unicode_minus"] = False
+
+# 1) 删除 matploblib 字体缓存，强制重新扫描系统字体（Streamlit Cloud 需要）
+_cache_dir = matplotlib.get_cachedir()
+for _pattern in ["fontlist*.json", "fontlist-v*.json"]:
+    for _f in _glob.glob(os.path.join(_cache_dir, _pattern)):
+        try:
+            os.remove(_f)
+        except OSError:
+            pass
+
+# 2) 查找系统中实际存在的中文字体文件
+_cn_font_file = None
+for _fp in [
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+    "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+    "C:/Windows/Fonts/msyh.ttc",
+    "C:/Windows/Fonts/simhei.ttf",
+]:
+    if os.path.exists(_fp):
+        _cn_font_file = _fp
+        break
+
+# 3) 注册字体文件并获取实际名称，设为默认字体
+if _cn_font_file:
+    _fm.fontManager.addfont(_cn_font_file)
+    _cn_name = _fm.FontProperties(fname=_cn_font_file).get_name()
+    matplotlib.rcParams["font.sans-serif"] = [_cn_name, "DejaVu Sans"]
+else:
+    matplotlib.rcParams["font.sans-serif"] = [
+        "SimHei", "Microsoft YaHei", "DejaVu Sans"
+    ]
 
 
 # =============================================================================

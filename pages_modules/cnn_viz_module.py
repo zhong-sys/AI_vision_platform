@@ -111,9 +111,17 @@ def load_image(source: str, upload_file=None) -> Image.Image:
             st.info("当前未上传图片，已回退到 camera 示例图。")
             img = generate_demo_image("camera")
     elif source == "具体图像":
-        # 从项目根目录查找 assets/1.jpg
-        fixed_path = Path(__file__).resolve().parent.parent / _FIXED_IMAGE_NAME
-        if fixed_path.exists():
+        # 多路径查找 assets/1.jpg（兼容本地开发与 Streamlit Cloud）
+        candidates = [
+            Path.cwd() / _FIXED_IMAGE_NAME,                                    # 项目根目录 (Cloud)
+            Path(__file__).resolve().parent.parent / _FIXED_IMAGE_NAME,        # pages_modules/ 上级
+        ]
+        fixed_path = None
+        for p in candidates:
+            if p.exists():
+                fixed_path = p
+                break
+        if fixed_path and fixed_path.exists():
             img = _to_rgb_safe(Image.open(fixed_path))
         else:
             st.warning("未找到 assets/1.jpg，已回退到 camera 示例图。")
