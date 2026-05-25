@@ -18,20 +18,62 @@ import streamlit as st
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from matplotlib.patches import Circle
 
-# 直接指定云端和本地都存在的字体路径
-font_path = '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc'
-if not os.path.exists(font_path):
-    # 本地 Windows 的回退
-    font_path = 'C:/Windows/Fonts/msyh.ttc'
+# ==================== 跨平台中文字体设置 ====================
+import matplotlib.font_manager as _fm
 
-if os.path.exists(font_path):
-    from matplotlib.font_manager import FontProperties
-    fp = FontProperties(fname=font_path)
-    plt.rcParams['font.family'] = fp.get_name()
-else:
-    plt.rcParams['font.family'] = 'sans-serif'
-plt.rcParams['axes.unicode_minus'] = False
+# 1) 遍历系统字体目录，找到 CJK 字体文件（与 packages.txt 中 fonts-noto-cjk 对齐）
+_CN_FONT_FILE = None
+# 优先检查已知路径
+for _fp in [
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+    "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+]:
+    if os.path.isfile(_fp):
+        _CN_FONT_FILE = _fp
+        break
+
+# 2) 若已知路径都不存在，递归扫描系统字体目录查找 CJK 字体
+if _CN_FONT_FILE is None:
+    _CJK_PATTERNS = ["CJK", "cjk", "noto", "Noto", "wqy", "WenQuanYi",
+                     "wenquan", "DroidSans", "chinese", "CN", "SC"]
+    for _d in ["/usr/share/fonts", "/usr/local/share/fonts", os.path.expanduser("~/.fonts")]:
+        if not os.path.isdir(_d):
+            continue
+        for _root, _dirs, _files in os.walk(_d):
+            for _fn in _files:
+                if _fn.endswith((".ttf", ".ttc", ".otf")):
+                    if any(_p in _fn for _p in _CJK_PATTERNS):
+                        _CN_FONT_FILE = os.path.join(_root, _fn)
+                        break
+            if _CN_FONT_FILE:
+                break
+        if _CN_FONT_FILE:
+            break
+
+# 3) Windows 回退
+if _CN_FONT_FILE is None:
+    for _fp in ["C:/Windows/Fonts/msyh.ttc", "C:/Windows/Fonts/simhei.ttf"]:
+        if os.path.isfile(_fp):
+            _CN_FONT_FILE = _fp
+            break
+
+# 4) 注册字体：rcParams 作为 legend/colorbar 的默认回退
+if _CN_FONT_FILE:
+    _fm.fontManager.addfont(_CN_FONT_FILE)
+    _cn_name = _fm.FontProperties(fname=_CN_FONT_FILE).get_name()
+    matplotlib.rcParams["font.sans-serif"] = [_cn_name, "DejaVu Sans"]
+matplotlib.rcParams["axes.unicode_minus"] = False
+
+
+def _cn_fp(size, bold=False):
+    """返回中文 FontProperties（直接按文件路径加载，跳过字体名匹配）。"""
+    if _CN_FONT_FILE:
+        return _fm.FontProperties(fname=_CN_FONT_FILE, size=size,
+                                  weight='bold' if bold else 'normal')
+    return None
 # =============================================================================
 # 1. 核心算法类（从 NeuralVis 移植，保留完整功能，禁止修改算法逻辑）
 # =============================================================================
