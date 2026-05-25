@@ -24,42 +24,42 @@ from matplotlib.patches import Circle
 import matplotlib.font_manager as _fm
 
 # 1) 遍历系统字体目录，找到 CJK 字体文件（与 packages.txt 中 fonts-noto-cjk 对齐）
-_CN_FONT_FILE = None
-# 优先检查已知路径
-for _fp in [
-    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-    "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
-    "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
-]:
-    if os.path.isfile(_fp):
-        _CN_FONT_FILE = _fp
-        break
-
-# 2) 若已知路径都不存在，递归扫描系统字体目录查找 CJK 字体
-if _CN_FONT_FILE is None:
-    _CJK_PATTERNS = ["CJK", "cjk", "noto", "Noto", "wqy", "WenQuanYi",
-                     "wenquan", "DroidSans", "chinese", "CN", "SC"]
-    for _d in ["/usr/share/fonts", "/usr/local/share/fonts", os.path.expanduser("~/.fonts")]:
-        if not os.path.isdir(_d):
-            continue
-        for _root, _dirs, _files in os.walk(_d):
-            for _fn in _files:
-                if _fn.endswith((".ttf", ".ttc", ".otf")):
-                    if any(_p in _fn for _p in _CJK_PATTERNS):
-                        _CN_FONT_FILE = os.path.join(_root, _fn)
-                        break
-            if _CN_FONT_FILE:
-                break
-        if _CN_FONT_FILE:
-            break
-
-# 3) Windows 回退
-if _CN_FONT_FILE is None:
-    for _fp in ["C:/Windows/Fonts/msyh.ttc", "C:/Windows/Fonts/simhei.ttf"]:
-        if os.path.isfile(_fp):
-            _CN_FONT_FILE = _fp
-            break
-
+# _CN_FONT_FILE = None
+# # 优先检查已知路径
+# for _fp in [
+#     "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+#     "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+#     "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+# ]:
+#     if os.path.isfile(_fp):
+#         _CN_FONT_FILE = _fp
+#         break
+#
+# # 2) 若已知路径都不存在，递归扫描系统字体目录查找 CJK 字体
+# if _CN_FONT_FILE is None:
+#     _CJK_PATTERNS = ["CJK", "cjk", "noto", "Noto", "wqy", "WenQuanYi",
+#                      "wenquan", "DroidSans", "chinese", "CN", "SC"]
+#     for _d in ["/usr/share/fonts", "/usr/local/share/fonts", os.path.expanduser("~/.fonts")]:
+#         if not os.path.isdir(_d):
+#             continue
+#         for _root, _dirs, _files in os.walk(_d):
+#             for _fn in _files:
+#                 if _fn.endswith((".ttf", ".ttc", ".otf")):
+#                     if any(_p in _fn for _p in _CJK_PATTERNS):
+#                         _CN_FONT_FILE = os.path.join(_root, _fn)
+#                         break
+#             if _CN_FONT_FILE:
+#                 break
+#         if _CN_FONT_FILE:
+#             break
+#
+# # 3) Windows 回退
+# if _CN_FONT_FILE is None:
+#     for _fp in ["C:/Windows/Fonts/msyh.ttc", "C:/Windows/Fonts/simhei.ttf"]:
+#         if os.path.isfile(_fp):
+#             _CN_FONT_FILE = _fp
+#             break
+_CN_FONT_FILE="assets/LXGWWenKai-Regular.ttf"
 # 4) 注册字体：rcParams 作为 legend/colorbar 的默认回退
 if _CN_FONT_FILE:
     _fm.fontManager.addfont(_CN_FONT_FILE)
