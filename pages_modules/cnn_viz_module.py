@@ -4,51 +4,29 @@
 """
 
 import time
+from pathlib import Path
 from io import BytesIO
 
 import numpy as np
 import streamlit as st
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-# ===================== 跨平台字体加载 =====================
-import os as _os
 
-def _load_font(size, bold=False):
-    """跨平台字体加载，优先使用 Linux / Streamlit Cloud 可用的中文字体"""
-    font_paths = [
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
-        "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
-        "C:/Windows/Fonts/msyh.ttc",
-        "C:/Windows/Fonts/simhei.ttf",
-        "C:/Windows/Fonts/simsun.ttc",
-    ]
-    if bold:
-        bold_paths = [
-            "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
-            "C:/Windows/Fonts/msyhbd.ttc",
-        ]
-        font_paths = bold_paths + font_paths
-    for path in font_paths:
-        if _os.path.exists(path):
-            try:
-                return ImageFont.truetype(path, size=size)
-            except Exception:
-                continue
-    return ImageFont.load_default()
 # ===================== 常量与配置 =====================
 
 _CONV_KERNELS = {
     "边缘检测（Sobel X）": np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=np.float32),
     "边缘检测（Sobel Y）": np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype=np.float32),
+    "边缘检测（Prewitt X）": np.array([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]], dtype=np.float32),
+    "边缘检测（Prewitt Y）": np.array([[-1, -1, -1], [0, 0, 0], [1, 1, 1]], dtype=np.float32),
+    "边缘检测（Laplacian）": np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]], dtype=np.float32),
+    "边缘检测（Laplacian 8邻域）": np.array([[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]], dtype=np.float32),
     "模糊（均值）": np.ones((3, 3), dtype=np.float32) / 9.0,
     "锐化": np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]], dtype=np.float32),
 }
+_COMBINED_KERNEL_NAME = "组合边缘检测（Sobel X+Y）"
+_FIXED_IMAGE_NAME = "D:/Hhu/AI_vision_platform/assets/1.jpg"
 
-_PALETTE_FM_LOW = np.array([15, 23, 42])      # #0f172a
-_PALETTE_FM_ZERO = np.array([100, 116, 139])  # #64748b
-_PALETTE_FM_HIGH = np.array([6, 182, 212])    # #06b6d4
 _PALETTE_BG_DARK = (26, 26, 26)               # #1a1a1a
 
 _POOL_CELL_SIZE = 32
@@ -90,19 +68,41 @@ def generate_demo_image(name: str, size: tuple = (128, 128)) -> Image.Image:
 
 
 def load_image(source: str, upload_file=None) -> Image.Image:
-    """加载并返回灰度 PIL Image。"""
-    if source == "上传图片" and upload_file is not None:
-        img = Image.open(upload_file).convert("L")
+    """加载并返回 RGB PIL Image（用于彩色显示）。"""
+    def _to_rgb_safe(raw_img: Image.Image) -> Image.Image:
+        """先处理透明通道再转 RGB，避免透明背景显示为黑底。"""
+        if raw_img.mode in ("RGBA", "LA") or ("transparency" in raw_img.info):
+            rgba = raw_img.convert("RGBA")
+            white_bg = Image.new("RGBA", rgba.size, (255, 255, 255, 255))
+            merged = Image.alpha_composite(white_bg, rgba)
+            return merged.convert("RGB")
+        return raw_img.convert("RGB")
+
+    if source == "上传图片":
+        if upload_file is not None:
+            img = _to_rgb_safe(Image.open(upload_file))
+        else:
+            st.info("当前未上传图片，已回退到 camera 示例图。")
+            img = generate_demo_image("camera")
+    elif source == "具体图像":
+        img_dir = Path(__file__).resolve().parent
+        fixed_path = img_dir / _FIXED_IMAGE_NAME
+        if fixed_path.exists():
+            img = _to_rgb_safe(Image.open(fixed_path))
+        else:
+            st.warning("未在 _internal 目录找到 1.jpg，已回退到 camera 示例图。")
+            img = generate_demo_image("camera")
     elif source == "在线灰度图":
         try:
             import urllib.request
             url = "https://upload.wikimedia.org/wikipedia/commons/5/50/Vd-Orig.png"
             with urllib.request.urlopen(url, timeout=5) as resp:
-                img = Image.open(BytesIO(resp.read())).convert("L")
+                img = _to_rgb_safe(Image.open(BytesIO(resp.read())))
         except Exception:
             img = generate_demo_image("camera")
     else:
         img = generate_demo_image(source)
+    img = _to_rgb_safe(img).resize((128, 128), Image.Resampling.LANCZOS)
     return img
 
 
@@ -153,6 +153,47 @@ def compute_convolution(image_array: np.ndarray, kernel: np.ndarray, row: int, c
     return float(np.sum(patch * kernel))
 
 
+def compute_combined_edge(image_array: np.ndarray, row: int, col: int) -> tuple:
+    """计算 Sobel X/Y 合成边缘强度，返回 (gx, gy, magnitude)。"""
+    kx = _CONV_KERNELS["边缘检测（Sobel X）"]
+    ky = _CONV_KERNELS["边缘检测（Sobel Y）"]
+    patch = image_array[row:row + 3, col:col + 3].astype(np.float32)
+    gx = float(np.sum(patch * kx))
+    gy = float(np.sum(patch * ky))
+    mag = float(np.sqrt(gx * gx + gy * gy))
+    return gx, gy, mag
+
+
+def compute_conv_value(image_array: np.ndarray, kernel_name: str, kernel: np.ndarray, row: int, col: int) -> float:
+    """统一计算单位置卷积值，支持组合边缘模式。"""
+    if kernel_name == _COMBINED_KERNEL_NAME:
+        _, _, mag = compute_combined_edge(image_array, row, col)
+        return mag
+    return compute_convolution(image_array, kernel, row, col)
+
+
+def compute_full_feature_map(image_array: np.ndarray, kernel_name: str, kernel: np.ndarray) -> np.ndarray:
+    """计算整张图的卷积特征图，并进行绝对值归一化（0-255）。"""
+    h, w = image_array.shape
+    h_out, w_out = h - 2, w - 2
+    fm = np.zeros((h_out, w_out), dtype=np.float32)
+    for i in range(h_out):
+        for j in range(w_out):
+            fm[i, j] = compute_conv_value(image_array, kernel_name, kernel, i, j)
+    fm = np.abs(fm)
+    fm_max = float(np.max(fm)) if fm.size > 0 else 0.0
+    if fm_max > 0:
+        fm = fm / fm_max * 255.0
+    return np.clip(fm, 0.0, 255.0).astype(np.uint8)
+
+
+def apply_gaussian_blur(image: Image.Image, enabled: bool) -> Image.Image:
+    """可选高斯降噪预处理。"""
+    if not enabled:
+        return image
+    return image.filter(ImageFilter.GaussianBlur(radius=1.0))
+
+
 def _heatmap_color(val: float, vmin: float, vmax: float) -> tuple:
     """3×3 热力图配色：正值偏红、负值偏蓝、零值白灰。"""
     if abs(val) < 1e-6:
@@ -176,7 +217,7 @@ def draw_heatmap_3x3(patch: np.ndarray, scale: int = 60) -> Image.Image:
     img = Image.new("RGB", (3 * scale, 3 * scale), (255, 255, 255))
     draw = ImageDraw.Draw(img)
     try:
-        font = _load_font(max(10, scale // 4))
+        font = ImageFont.truetype("arial.ttf", max(10, scale // 4))
     except Exception:
         font = ImageFont.load_default()
     for i in range(3):
@@ -197,7 +238,7 @@ def draw_kernel_matrix(kernel: np.ndarray, scale: int = 60) -> Image.Image:
     img = Image.new("RGB", (3 * scale, 3 * scale), (245, 245, 245))
     draw = ImageDraw.Draw(img)
     try:
-        font = _load_font(max(10, scale // 4))
+        font = ImageFont.truetype("arial.ttf", max(10, scale // 4))
     except Exception:
         font = ImageFont.load_default()
     abs_max = max(abs(kernel.min()), abs(kernel.max()), 1e-6)
@@ -220,6 +261,27 @@ def draw_kernel_matrix(kernel: np.ndarray, scale: int = 60) -> Image.Image:
     return img
 
 
+def draw_combined_kernel_matrix(scale: int = 60) -> Image.Image:
+    """绘制 Sobel X + Sobel Y 双核展示图。"""
+    sobel_x = draw_kernel_matrix(_CONV_KERNELS["边缘检测（Sobel X）"], scale=scale)
+    sobel_y = draw_kernel_matrix(_CONV_KERNELS["边缘检测（Sobel Y）"], scale=scale)
+    gap = max(18, scale // 3)
+    label_h = 24
+    width = sobel_x.width + sobel_y.width + gap
+    height = max(sobel_x.height, sobel_y.height) + label_h
+    canvas = Image.new("RGB", (width, height), (245, 245, 245))
+    draw = ImageDraw.Draw(canvas)
+    try:
+        font = ImageFont.truetype("arial.ttf", max(11, scale // 4))
+    except Exception:
+        font = ImageFont.load_default()
+    canvas.paste(sobel_x, (0, label_h))
+    canvas.paste(sobel_y, (sobel_x.width + gap, label_h))
+    draw.text((6, 4), "Sobel X", fill=(30, 41, 59), font=font)
+    draw.text((sobel_x.width + gap + 6, 4), "Sobel Y", fill=(30, 41, 59), font=font)
+    return canvas
+
+
 def draw_elementwise_product(patch: np.ndarray, kernel: np.ndarray, scale: int = 60) -> Image.Image:
     """绘制 3×3 逐元素乘积矩阵，并在右下角显示求和结果。"""
     product = patch * kernel
@@ -228,8 +290,8 @@ def draw_elementwise_product(patch: np.ndarray, kernel: np.ndarray, scale: int =
     img = Image.new("RGB", (3 * scale, 3 * scale + footer_h), (250, 250, 250))
     draw = ImageDraw.Draw(img)
     try:
-        font = _load_font(max(10, scale // 4))
-        font_sum = _load_font(max(11, scale // 4 + 2))
+        font = ImageFont.truetype("arial.ttf", max(10, scale // 4))
+        font_sum = ImageFont.truetype("arial.ttf", max(11, scale // 4 + 2))
     except Exception:
         font = ImageFont.load_default()
         font_sum = font
@@ -260,7 +322,7 @@ def draw_elementwise_product(patch: np.ndarray, kernel: np.ndarray, scale: int =
 
 
 def draw_feature_map(feature_map: np.ndarray, current_row: int, current_col: int) -> Image.Image:
-    """绘制累积特征图：已计算位置显示实际值，未计算位置深灰，当前像素黄点高亮。"""
+    """绘制累积特征图：黑白灰配色，未计算位置深灰，当前像素高亮。"""
     h, w = feature_map.shape
     cell = 20
     img = Image.new("RGB", (w * cell, h * cell), _PALETTE_BG_DARK)
@@ -268,33 +330,29 @@ def draw_feature_map(feature_map: np.ndarray, current_row: int, current_col: int
 
     valid = ~np.isnan(feature_map)
     if valid.any():
-        vmin = feature_map[valid].min()
-        vmax = feature_map[valid].max()
+        abs_max = float(np.max(np.abs(feature_map[valid])))
     else:
-        vmin, vmax = -1.0, 1.0
+        abs_max = 1.0
+    abs_max = max(abs_max, 1e-6)
 
     for i in range(h):
         for j in range(w):
             val = feature_map[i, j]
             if np.isnan(val):
-                color = _PALETTE_BG_DARK
-            elif abs(val) < 1e-6:
-                color = _PALETTE_FM_ZERO
-            elif val < 0:
-                t = min(1.0, val / vmin) if vmin < 0 else 0
-                color = tuple(_PALETTE_FM_LOW + (_PALETTE_FM_ZERO - _PALETTE_FM_LOW) * t)
+                gray = 32
             else:
-                t = min(1.0, val / vmax) if vmax > 0 else 0
-                color = tuple(_PALETTE_FM_ZERO + (_PALETTE_FM_HIGH - _PALETTE_FM_ZERO) * t)
-            color = tuple(max(0, min(255, int(c))) for c in color)
+                # 使用绝对值强度做灰度映射，边缘响应越强越亮。
+                t = min(1.0, abs(float(val)) / abs_max)
+                gray = int(25 + 230 * t)
+            color = (gray, gray, gray)
             x0, y0 = j * cell, i * cell
             draw.rectangle([x0, y0, x0 + cell - 1, y0 + cell - 1], fill=color)
 
-    # 当前像素黄点高亮
+    # 当前像素白色高亮
     cx = current_col * cell + cell // 2
     cy = current_row * cell + cell // 2
     r = max(3, cell // 3)
-    draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(253, 224, 71), outline=(234, 179, 8))
+    draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(245, 245, 245), outline=(180, 180, 180))
 
     return img
 
@@ -414,40 +472,43 @@ def draw_layer_chain() -> Image.Image:
         ("Conv2\n29×29", 29),
         ("Pool2\n14×14", 14),
     ]
-    box_size = 50
-    gap = 50
-    margin = 20
+    box_size = 120
+    gap = 100
+    margin = 40
+    label_gap = 50
     total_w = len(stages) * box_size + (len(stages) - 1) * gap + margin * 2
-    total_h = box_size + margin * 2 + 30
+    total_h = box_size + margin * 2 + label_gap
     img = Image.new("RGB", (total_w, total_h), (15, 15, 15))
     draw = ImageDraw.Draw(img)
     try:
-        font = _load_font(10)
-        font_large = _load_font(11)
+        font = ImageFont.truetype("arial.ttf", 20)
+        font_large = ImageFont.truetype("arial.ttf", 22)
     except Exception:
         font = ImageFont.load_default()
         font_large = font
 
     colors = [(191, 219, 254), (187, 247, 208), (253, 230, 138), (187, 247, 208), (253, 230, 138)]
+    max_stage_size = max(s for _, s in stages)
     for idx, (label, size) in enumerate(stages):
         x = margin + idx * (box_size + gap)
         y = margin
-        # 小方块表示特征图尺寸
-        sq = max(10, size)
+        # 小方块表示特征图尺寸（按最大阶段尺寸等比缩放）
+        sq = int(size / max_stage_size * box_size)
+        sq = max(16, min(sq, box_size))
         sx = x + (box_size - sq) // 2
         sy = y + (box_size - sq) // 2
-        draw.rectangle([sx, sy, sx + sq - 1, sy + sq - 1], fill=colors[idx], outline=(100, 100, 100))
+        draw.rectangle([sx, sy, sx + sq - 1, sy + sq - 1], fill=colors[idx], outline=(100, 100, 100), width=2)
         # 标签
         bbox = draw.textbbox((0, 0), label, font=font_large)
         tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-        draw.text((x + (box_size - tw) // 2, y + box_size + 4), label, fill=(220, 220, 220), font=font_large)
+        draw.text((x + (box_size - tw) // 2, y + box_size + 8), label, fill=(220, 220, 220), font=font_large)
         # 箭头
         if idx < len(stages) - 1:
-            ax0 = x + box_size + 2
-            ax1 = x + box_size + gap - 2
+            ax0 = x + box_size + 4
+            ax1 = x + box_size + gap - 4
             ay = y + box_size // 2
-            draw.line([(ax0, ay), (ax1, ay)], fill=(150, 150, 150), width=2)
-            draw.polygon([(ax1, ay - 4), (ax1, ay + 4), (ax1 + 6, ay)], fill=(150, 150, 150))
+            draw.line([(ax0, ay), (ax1, ay)], fill=(150, 150, 150), width=3)
+            draw.polygon([(ax1, ay - 6), (ax1, ay + 6), (ax1 + 10, ay)], fill=(150, 150, 150))
 
     return img
 
@@ -461,6 +522,11 @@ def format_conv_formula(patch: np.ndarray, kernel: np.ndarray, result: float) ->
         for j in range(3):
             terms.append(f"{patch[i, j]:.1f}×({kernel[i, j]:.1f})")
     return "sum( [" + " + ".join(terms) + "] ) = " + f"{result:.1f}"
+
+
+def format_combined_formula(gx: float, gy: float, result: float) -> str:
+    """生成组合边缘模式的公式字符串。"""
+    return f"sqrt( Gx^2 + Gy^2 ) = sqrt({gx:.1f}^2 + {gy:.1f}^2) = {result:.1f}"
 
 
 # ===================== Session State 管理 =====================
@@ -532,11 +598,18 @@ def _render_conv_controls(max_row: int, max_col: int, h_out: int, w_out: int, bu
 
 
 def _render_conv_visualization(
-    img: Image.Image, img_arr: np.ndarray, kernel: np.ndarray, row: int, col: int, conv_feature_map: np.ndarray
+    img: Image.Image,
+    img_arr: np.ndarray,
+    kernel: np.ndarray,
+    kernel_name: str,
+    row: int,
+    col: int,
+    conv_feature_map: np.ndarray,
 ):
     """渲染五栏卷积可视化。"""
     patch = img_arr[row:row + 3, col:col + 3]
     current_val = float(conv_feature_map[row, col])
+    is_combined = kernel_name == _COMBINED_KERNEL_NAME
     viz_cols = st.columns([2, 1.2, 1.2, 1.2, 2])
 
     with viz_cols[0]:
@@ -553,11 +626,19 @@ def _render_conv_visualization(
 
     with viz_cols[2]:
         st.markdown("**核权重矩阵**")
-        st.image(draw_kernel_matrix(kernel, scale=66), use_container_width=False)
+        if is_combined:
+            st.image(draw_combined_kernel_matrix(scale=33), use_container_width=False)
+        else:
+            st.image(draw_kernel_matrix(kernel, scale=66), use_container_width=False)
 
     with viz_cols[3]:
-        st.markdown("**逐元素乘积 + 求和**")
-        st.image(draw_elementwise_product(patch, kernel, scale=66), use_container_width=False)
+        if is_combined:
+            gx, gy, _ = compute_combined_edge(img_arr, row, col)
+            st.markdown("**Sobel X/Y 响应合成**")
+            st.code(f"Gx = {gx:.2f}\nGy = {gy:.2f}\n边缘强度 = sqrt(Gx^2+Gy^2)", language="text")
+        else:
+            st.markdown("**逐元素乘积 + 求和**")
+            st.image(draw_elementwise_product(patch, kernel, scale=66), use_container_width=False)
 
     with viz_cols[4]:
         st.markdown("**累积特征图**")
@@ -568,7 +649,7 @@ def _render_conv_visualization(
     return patch, current_val
 
 
-def _render_conv_scan_logic(h_out: int, w_out: int, img_arr: np.ndarray, kernel: np.ndarray):
+def _render_conv_scan_logic(h_out: int, w_out: int, img_arr: np.ndarray, kernel_name: str, kernel: np.ndarray):
     """渲染卷积扫描进度，并在自动扫描模式下按时间自适应推进。"""
     total_steps = max(1, h_out * w_out)
     done_steps = int(np.count_nonzero(st.session_state.conv_computed))
@@ -590,21 +671,31 @@ def _render_conv_scan_logic(h_out: int, w_out: int, img_arr: np.ndarray, kernel:
     st.caption(f"🔄 自动扫描中：第 {sr + 1}/{h_out} 行，第 {sc + 1}/{w_out} 列，当前帧推进 {step_budget} 步")
 
     finished = False
+    finished_row = None
+    finished_col = None
     for _ in range(step_budget):
         sr, sc = st.session_state.scan_position
         if 0 <= sr < h_out and 0 <= sc < w_out and not st.session_state.conv_computed[sr, sc]:
-            val = compute_convolution(img_arr, kernel, sr, sc)
+            val = compute_conv_value(img_arr, kernel_name, kernel, sr, sc)
             st.session_state.conv_feature_map[sr, sc] = val
             st.session_state.conv_computed[sr, sc] = True
 
         nr, nc, finished = _next_conv_position(sr, sc, h_out, w_out)
         if finished:
             st.session_state.is_scanning = False
+            finished_row, finished_col = sr, sc
             break
         # 只更新 scan_position；下一帧在 _render_conv_controls 里、在 slider 渲染前同步到 conv_row/col
         st.session_state.scan_position = (nr, nc)
 
     st.session_state.conv_last_tick = now
+    if finished and finished_row is not None and finished_col is not None:
+        # 扫描结束后定位到最后一个已计算像素；用临时 key 暂存，
+        # 下一轮渲染在 slider 创建前再写到 conv_row/col。
+        st.session_state.scan_position = (finished_row, finished_col)
+        st.session_state.conv_scan_final_row = min(finished_row, max(0, h_out - 1))
+        st.session_state.conv_scan_final_col = min(finished_col, max(0, w_out - 1))
+        st.rerun()
     if st.session_state.is_scanning:
         st.rerun()
 
@@ -615,10 +706,7 @@ def nv_render_cnn_viz():
     """渲染 CNN 交互教学页面。"""
     st.title("卷积神经网络（CNN）")
     st.caption("交互式探索卷积核滑动与池化压缩的核心机制")
-    st.markdown(
-        '<a href="/" target="_self" style="text-decoration:none; font-size:14px; color:#1A7EC1;">🏠 返回首页</a>',
-        unsafe_allow_html=True)
-    st.markdown("---")
+
     # ---- 为什么需要它 ----
     st.subheader("为什么需要它？")
     st.info(
@@ -633,9 +721,11 @@ def nv_render_cnn_viz():
 
     # 初始化 key session state
     if "conv_image_source" not in st.session_state:
-        st.session_state.conv_image_source = "camera"
+        st.session_state.conv_image_source = "具体图像"
     if "conv_kernel_name" not in st.session_state:
-        st.session_state.conv_kernel_name = "边缘检测（Sobel X）"
+        st.session_state.conv_kernel_name = "边缘检测（Laplacian 8邻域）"
+    if "conv_enable_gaussian" not in st.session_state:
+        st.session_state.conv_enable_gaussian = True
     if "is_scanning" not in st.session_state:
         st.session_state.is_scanning = False
     if "scan_position" not in st.session_state:
@@ -644,13 +734,14 @@ def nv_render_cnn_viz():
     # 图像与卷积核参数（第一行）+ 扫描按钮
     ctrl_col1, ctrl_col2, ctrl_col3 = st.columns([1.2, 1.2, 1.6], gap="small")
     with ctrl_col1:
-        image_options = ["camera", "coins", "checkerboard", "gradient", "在线灰度图", "上传图片"]
+        image_options = ["具体图像", "camera", "coins", "checkerboard", "gradient", "在线灰度图", "上传图片"]
         img_source = st.selectbox("选择图像", image_options, key="conv_image_source")
         upload_file = None
         if img_source == "上传图片":
             upload_file = st.file_uploader("上传图片", type=["png", "jpg", "jpeg"], key="conv_upload")
+        enable_gaussian = st.checkbox("预处理：高斯模糊降噪", key="conv_enable_gaussian")
     with ctrl_col2:
-        kernel_options = list(_CONV_KERNELS.keys()) + ["自定义"]
+        kernel_options = [_COMBINED_KERNEL_NAME] + list(_CONV_KERNELS.keys()) + ["自定义"]
         kernel_name = st.selectbox("选择卷积核", kernel_options, key="conv_kernel_name")
         custom_kernel = None
         if kernel_name == "自定义":
@@ -668,8 +759,10 @@ def nv_render_cnn_viz():
             custom_kernel = [v for r in custom_rows for v in r]
 
     # 加载图像并计算尺寸
-    img = load_image(img_source, upload_file)
-    img_arr = np.array(img, dtype=np.float32)
+    img_display = load_image(img_source, upload_file)
+    img_for_compute = img_display.convert("L")
+    img_for_compute = apply_gaussian_blur(img_for_compute, enable_gaussian)
+    img_arr = np.array(img_for_compute, dtype=np.float32)
     H, W = img_arr.shape
     h_out, w_out = H - 2, W - 2
     max_row = max(0, h_out - 1)
@@ -681,12 +774,17 @@ def nv_render_cnn_viz():
     # 初始化/重置特征图（图像、核或尺寸变化时）
     prev_img = st.session_state.get("conv_current_image_source", None)
     prev_kernel = st.session_state.get("conv_current_kernel_name", None)
+    image_key = f"{img_source}|gauss:{enable_gaussian}"
     if ("conv_feature_map" not in st.session_state
             or st.session_state.conv_feature_map.shape != (h_out, w_out)
-            or prev_img != img_source
+            or prev_img != image_key
             or prev_kernel != kernel_name):
         _reset_conv_state(h_out, w_out)
-        st.session_state.conv_current_image_source = img_source
+        # 更换卷积核/图像时，扫描位置回到第一行第一列
+        st.session_state.conv_row = 0
+        st.session_state.conv_col = 0
+        st.session_state.scan_position = (0, 0)
+        st.session_state.conv_current_image_source = image_key
         st.session_state.conv_current_kernel_name = kernel_name
 
     # 初始化 slider 状态（必须在 slider 渲染前完成所有修改）
@@ -694,6 +792,12 @@ def nv_render_cnn_viz():
         st.session_state.conv_row = 0
     if "conv_col" not in st.session_state:
         st.session_state.conv_col = 0
+    # 自动扫描结束后的定位（从临时 key 写入，在 slider 创建前完成）
+    if "conv_scan_final_row" in st.session_state:
+        st.session_state.conv_row = st.session_state.conv_scan_final_row
+        st.session_state.conv_col = st.session_state.conv_scan_final_col
+        del st.session_state.conv_scan_final_row
+        del st.session_state.conv_scan_final_col
     # 图像变小后越界修正
     if st.session_state.conv_row > max_row:
         st.session_state.conv_row = max_row
@@ -705,18 +809,33 @@ def nv_render_cnn_viz():
 
     # 计算当前位置卷积（若未计算）
     if not st.session_state.conv_computed[row, col]:
-        val = compute_convolution(img_arr, kernel, row, col)
+        val = compute_conv_value(img_arr, kernel_name, kernel, row, col)
         st.session_state.conv_feature_map[row, col] = val
         st.session_state.conv_computed[row, col] = True
 
     patch, current_val = _render_conv_visualization(
-        img, img_arr, kernel, row, col, st.session_state.conv_feature_map
+        img_display, img_arr, kernel, kernel_name, row, col, st.session_state.conv_feature_map
     )
 
     # 数值计算显示
-    formula = format_conv_formula(patch, kernel, current_val)
+    if kernel_name == _COMBINED_KERNEL_NAME:
+        gx, gy, _ = compute_combined_edge(img_arr, row, col)
+        formula = format_combined_formula(gx, gy, current_val)
+    else:
+        formula = format_conv_formula(patch, kernel, current_val)
     st.code(formula, language="text")
-    _render_conv_scan_logic(h_out, w_out, img_arr, kernel)
+    _render_conv_scan_logic(h_out, w_out, img_arr, kernel_name, kernel)
+
+    with st.expander("查看完整边缘提取效果", expanded=True):
+        full_map = compute_full_feature_map(img_arr, kernel_name, kernel)
+        preview_col1, preview_col2 = st.columns(2)
+        with preview_col1:
+            st.markdown("**原图（彩色）**")
+            st.image(img_display, use_container_width=False)
+        with preview_col2:
+            st.markdown("**全图边缘特征图**")
+            st.image(Image.fromarray(full_map, mode="L"), use_container_width=False)
+        st.caption("建议优先使用“边缘检测（Laplacian 8邻域）”或“组合边缘检测（Sobel X+Y）”提取头像完整轮廓。")
 
     # ---- 卷积原理讲解 ----
     st.markdown(
@@ -861,7 +980,7 @@ def nv_render_cnn_viz():
     # ==================== 模块 C：层次叠加链条 ====================
     st.subheader("核心机制：从边缘到抽象的层次叠加")
     chain_img = draw_layer_chain()
-    st.image(chain_img, use_container_width=False)
+    st.image(chain_img, use_container_width=True)
     st.caption("每一层卷积提取更复杂的特征，池化逐步降低空间维度，参数共享保证高效。")
 
     with st.expander("📖 静态层次链图 · 读图详解（点击展开）", expanded=False):

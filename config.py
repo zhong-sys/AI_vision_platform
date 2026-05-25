@@ -68,7 +68,7 @@ GLOBAL_CSS = """
         border-radius: 12px;
         margin: 20px 0;
         text-align: center;
-        font-size: 15px;
+        font-size: 17px;
         letter-spacing: 2px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.04);
     }
@@ -104,7 +104,7 @@ GLOBAL_CSS = """
         display: inline-block;
         background: #F39C12;
         color: white;
-        font-size: 12px;
+        font-size: 17px;
         font-weight: 600;
         padding: 2px 10px;
         border-radius: 20px;
@@ -115,7 +115,7 @@ GLOBAL_CSS = """
         border-radius: 30px;
         padding: 8px 24px;
         color: #0F5B9E;
-        font-size: 14px;
+        font-size: 17px;
         border: 1px solid #E2E8F0;
         display: inline-block;
     }

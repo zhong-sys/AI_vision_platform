@@ -1,0 +1,310 @@
+{
+  "knowledge_base": "ai_algorithm_visualization_platform",
+  "display_name": "河海大学 AI 算法可视化学习平台知识库",
+  "version": "1.0",
+  "description": "统一管理 DeepSeek、智谱GLM、通义千问、文心一言四款国产大模型的提示词、预期输出与参数配置。",
+  "modules": {
+    "deepseek": {
+      "module": "deepseek",
+      "display_name": "DeepSeek",
+      "version": "1.0",
+      "description": "高性价比通用大模型，推理能力与代码生成能力突出，基于 OpenAI 兼容 API 集成。",
+      "data_seed": 42,
+      "parameters": {
+        "temperature": {
+          "type": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.7,
+          "step": 0.1
+        },
+        "max_tokens": {
+          "type": "int",
+          "min": 50,
+          "max": 2000,
+          "default": 1024,
+          "step": 1
+        },
+        "api_model_name": {
+          "type": "string",
+          "default": "deepseek-chat"
+        },
+        "base_url": {
+          "type": "string",
+          "default": "https://api.deepseek.com"
+        },
+        "context_length": {
+          "type": "int",
+          "default": 65536
+        }
+      },
+      "session_state_keys": [
+        "llm_messages_deepseek",
+        "llm_selected_model",
+        "llm_temperature",
+        "llm_max_tokens",
+        "llm_provider"
+      ],
+      "ui_defaults": {
+        "layout": "wide",
+        "color": "#1A7EC1",
+        "logo_path": "assets/logos/deepseek_logo.png",
+        "features": [
+          "上下文长度 64K",
+          "支持联网搜索",
+          "API 完全兼容 OpenAI 格式"
+        ],
+        "free_quota": "新用户注册赠送 500万 Tokens，有效期30天。",
+        "website": "https://platform.deepseek.com"
+      }
+    },
+    "zhipu_glm": {
+      "module": "zhipu_glm",
+      "display_name": "智谱GLM",
+      "version": "1.0",
+      "description": "清华大学技术成果转化的永久免费轻量级大模型，适合教学和原型开发。",
+      "data_seed": 42,
+      "parameters": {
+        "temperature": {
+          "type": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.7,
+          "step": 0.1
+        },
+        "max_tokens": {
+          "type": "int",
+          "min": 50,
+          "max": 2000,
+          "default": 1024,
+          "step": 1
+        },
+        "api_model_name": {
+          "type": "string",
+          "default": "glm-4-flash"
+        },
+        "base_url": {
+          "type": "string",
+          "default": "https://open.bigmodel.cn/api/paas/v4"
+        },
+        "context_length": {
+          "type": "int",
+          "default": 131072
+        }
+      },
+      "session_state_keys": [
+        "llm_messages_zhipu",
+        "llm_selected_model",
+        "llm_temperature",
+        "llm_max_tokens",
+        "llm_provider"
+      ],
+      "ui_defaults": {
+        "layout": "wide",
+        "color": "#3A9BDC",
+        "logo_path": "assets/logos/zhipu_logo.png",
+        "features": [
+          "上下文长度 128K",
+          "支持函数调用",
+          "永久免费，无额度限制",
+          "并发限制为30"
+        ],
+        "free_quota": "GLM-4-Flash 模型永久免费，无Token额度限制。",
+        "website": "https://bigmodel.cn"
+      }
+    },
+    "tongyi_qwen": {
+      "module": "tongyi_qwen",
+      "display_name": "通义千问",
+      "version": "1.0",
+      "description": "阿里云自研大语言模型，Qwen-Code 专为代码生成和理解优化，编程教学场景表现出色。",
+      "data_seed": 42,
+      "parameters": {
+        "temperature": {
+          "type": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.7,
+          "step": 0.1
+        },
+        "max_tokens": {
+          "type": "int",
+          "min": 50,
+          "max": 2000,
+          "default": 1024,
+          "step": 1
+        },
+        "api_model_name": {
+          "type": "string",
+          "default": "qwen-turbo"
+        },
+        "base_url": {
+          "type": "string",
+          "default": "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        },
+        "context_length": {
+          "type": "int",
+          "default": 32768
+        }
+      },
+      "session_state_keys": [
+        "llm_messages_qwen",
+        "llm_selected_model",
+        "llm_temperature",
+        "llm_max_tokens",
+        "llm_provider"
+      ],
+      "ui_defaults": {
+        "layout": "wide",
+        "color": "#FF6B00",
+        "logo_path": "assets/logos/qwen_logo.png",
+        "features": [
+          "上下文长度 32K",
+          "代码生成能力强",
+          "支持多种编程语言"
+        ],
+        "free_quota": "新用户每模型赠送 100万 Tokens，或每日2000次免费调用。",
+        "website": "https://bailian.console.aliyun.com"
+      }
+    },
+    "wenxin_ernie": {
+      "module": "wenxin_ernie",
+      "display_name": "文心一言",
+      "version": "1.0",
+      "description": "百度文心大模型驱动的对话式 AI，中文语境理解最友好，知识问答与内容创作表现突出。",
+      "data_seed": 42,
+      "parameters": {
+        "temperature": {
+          "type": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.7,
+          "step": 0.1
+        },
+        "max_tokens": {
+          "type": "int",
+          "min": 50,
+          "max": 2000,
+          "default": 1024,
+          "step": 1
+        },
+        "api_model_name": {
+          "type": "string",
+          "default": "ernie-4.0-8k"
+        },
+        "base_url": {
+          "type": "string",
+          "default": "https://qianfan.baidubce.com/v2"
+        },
+        "context_length": {
+          "type": "int",
+          "default": 8192
+        }
+      },
+      "session_state_keys": [
+        "llm_messages_wenxin",
+        "llm_selected_model",
+        "llm_temperature",
+        "llm_max_tokens",
+        "llm_provider"
+      ],
+      "ui_defaults": {
+        "layout": "wide",
+        "color": "#2468F2",
+        "logo_path": "assets/logos/wenxin_logo.png",
+        "features": [
+          "上下文长度 8K",
+          "中文理解能力强",
+          "支持插件扩展"
+        ],
+        "free_quota": "新用户注册赠送 50万 Tokens，有效期30天。",
+        "website": "https://cloud.baidu.com"
+      }
+    }
+  },
+  "shared_config": {
+    "api_secret_keys": {
+      "DeepSeek": "DEEPSEEK_API_KEY",
+      "智谱GLM": "ZHIPU_API_KEY",
+      "通义千问": "ALIYUN_API_KEY",
+      "文心一言": "BAIDU_API_KEY"
+    },
+    "request_config": {
+      "timeout_seconds": 45,
+      "max_retry_attempts": 3,
+      "retry_base_delay_seconds": 1.5,
+      "max_history_messages": 20,
+      "max_concurrency": 8,
+      "acquire_timeout_seconds": 20
+    },
+    "parameter_descriptions": {
+      "temperature": {
+        "display_name": "Temperature",
+        "chinese_name": "温度参数",
+        "description": "控制模型回复的随机性和创造性。值越低，回复越确定、一致；值越高，回复越多样化、有创意。",
+        "analogy": "0 = 填空题标准答案，1 = 开放作文天马行空",
+        "recommendations": {
+          "code_generation": { "range": [0.0, 0.3], "reason": "代码需要确定性和一致性" },
+          "translation": { "range": [0.0, 0.3], "reason": "翻译需要准确对应" },
+          "daily_chat": { "range": [0.5, 0.8], "reason": "日常对话需要自然和多样" },
+          "creative_writing": { "range": [0.7, 1.0], "reason": "创作需要灵感和多样性" },
+          "brainstorming": { "range": [0.8, 1.0], "reason": "头脑风暴需要发散思维" }
+        }
+      },
+      "max_tokens": {
+        "display_name": "Max Tokens",
+        "chinese_name": "最大输出长度",
+        "description": "限制模型单次回复的最大 Token 数量。1 Token ≈ 0.5-1 个中文字或约 0.75 个英文单词。",
+        "analogy": "相当于给作文限定的字数上限",
+        "recommendations": {
+          "short_answer": { "value": 512, "reason": "简短问答足够" },
+          "normal_chat": { "value": 1024, "reason": "日常对话适中" },
+          "long_form": { "value": 2048, "reason": "长文/报告/代码" }
+        }
+      }
+    },
+    "error_messages": {
+      "api_key_missing": {
+        "template": "❌ 未配置 {model} 的 API Key。请在 `.streamlit/secrets.toml` 中添加。",
+        "suggestion": "💡 申请免费 API Key：访问 {website} 注册即可获取。",
+        "security_note": "⚠️ API Key 属于敏感信息，请勿分享或提交到公开仓库。"
+      },
+      "concurrency_limit": {
+        "template": "当前并发请求较高（最多同时 {max} 个），请稍后重试。"
+      },
+      "request_retry": {
+        "template": "请求失败，正在重试（{attempt}/{max}），约 {delay}s 后继续…"
+      },
+      "request_failed": {
+        "template": "调用模型时出错: {error_message}"
+      }
+    },
+    "teaching_config": {
+      "tone_style": "口语化导览，客观中立，场景优先，新手友好",
+      "language": "zh-CN",
+      "max_model_description_length": 120,
+      "max_feature_items": 4,
+      "recommended_questions_count": 5,
+      "comparison_dimensions": [
+        "上下文长度",
+        "免费策略",
+        "代码能力",
+        "中文理解",
+        "逻辑推理",
+        "API兼容性",
+        "最适场景"
+      ]
+    },
+    "ui_config": {
+      "chat_input_placeholder": "向 {model} 提问...",
+      "clear_chat_button": "🧹 清空对话",
+      "model_intro_expander": "📖 关于 {model}",
+      "back_to_home_button": "🏠 返回首页",
+      "divider_style": "solid",
+      "css": {
+        "primary_color_var": "--hhu-blue: #1A7EC1",
+        "font_family": "Microsoft YaHei, PingFang SC, SimHei, sans-serif"
+      }
+    }
+  }
+}

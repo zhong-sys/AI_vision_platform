@@ -1,0 +1,386 @@
+{
+  "knowledge_base": "ai_algorithm_visualization_platform",
+  "display_name": "河海大学 AI 算法可视化学习平台知识库",
+  "version": "1.0",
+  "description": "统一管理神经网络、CNN、RNN、Transformer 四模块的提示词、预期输出与参数配置。",
+  "modules": {
+    "neural_network": {
+      "module": "neural_network",
+      "display_name": "神经网络可视化训练模块",
+      "version": "1.0",
+      "description": "基于 NumPy 手写全连接神经网络的 Streamlit 教学可视化模块参数配置。",
+      "data_seed": 42,
+      "parameters": {
+        "input_size": {
+          "type": "int",
+          "min": 2,
+          "max": 10,
+          "default": 2,
+          "step": 1
+        },
+        "hidden_layer_count": {
+          "type": "int",
+          "min": 1,
+          "max": 4,
+          "default": 2,
+          "step": 1
+        },
+        "hidden_units": {
+          "type": "int",
+          "min": 2,
+          "max": 20,
+          "default": 8,
+          "step": 1
+        },
+        "output_size": {
+          "type": "enum",
+          "options": [1, 2, 3, 4],
+          "default": 1
+        },
+        "activation": {
+          "type": "enum",
+          "default": "relu",
+          "options": ["relu", "sigmoid", "tanh", "linear"],
+          "labels": {
+            "relu": "ReLU",
+            "sigmoid": "Sigmoid",
+            "tanh": "Tanh",
+            "linear": "Linear"
+          }
+        },
+        "loss_type": {
+          "type": "enum",
+          "default": "cross_entropy",
+          "options": ["cross_entropy", "mse", "mae"],
+          "labels": {
+            "cross_entropy": "交叉熵",
+            "mse": "MSE",
+            "mae": "MAE"
+          }
+        },
+        "learning_rate": {
+          "type": "enum",
+          "options": [0.001, 0.01, 0.1, 0.5],
+          "default": 0.01
+        },
+        "max_epochs": {
+          "type": "int",
+          "min": 10,
+          "max": 1000,
+          "default": 100,
+          "step": 1
+        },
+        "batch_size": {
+          "type": "int",
+          "default": 32
+        },
+        "dataset_task": {
+          "type": "enum",
+          "default": "分类",
+          "options": ["分类", "回归", "聚类"]
+        },
+        "n_samples": {
+          "type": "int",
+          "default": 200
+        },
+        "noise": {
+          "type": "float",
+          "default": 0.1
+        }
+      },
+      "session_state_keys": [
+        "nv_trainer",
+        "nv_training",
+        "nv_auto_training",
+        "nv_history",
+        "nv_logs",
+        "nv_network_built",
+        "nv_layer_sizes",
+        "nv_target_epochs",
+        "nv_last_info",
+        "nv_anim_phase",
+        "nv_anim_info",
+        "nv_viz_mode",
+        "nv_input_size",
+        "nv_n_hidden",
+        "nv_output_size",
+        "nv_activation_display",
+        "nv_loss_display",
+        "nv_lr",
+        "nv_max_epochs"
+      ],
+      "ui_defaults": {
+        "layout": "wide",
+        "left_panel": "网络结构与训练参数",
+        "tabs": ["训练曲线", "网络结构", "训练日志"],
+        "default_viz_mode": "weights",
+        "matplotlib_font": ["SimHei", "Microsoft YaHei", "Arial Unicode MS"]
+      }
+    },
+    "cnn": {
+      "module": "cnn",
+      "display_name": "CNN 卷积与池化交互演示模块",
+      "version": "1.0",
+      "description": "基于 Streamlit、NumPy、PIL 的卷积核滑动与池化教学可视化参数配置。",
+      "parameters": {
+        "fixed_image_name": {
+          "type": "string",
+          "default": "1.jpg"
+        },
+        "image_sources": {
+          "type": "enum_list",
+          "default": "具体图像",
+          "options": ["具体图像", "camera", "coins", "checkerboard", "gradient", "在线灰度图", "上传图片"]
+        },
+        "enable_gaussian": {
+          "type": "bool",
+          "default": true
+        },
+        "conv_kernels": {
+          "type": "enum_list",
+          "default": "边缘检测（Laplacian 8邻域）",
+          "options": [
+            "组合边缘检测（Sobel X+Y）",
+            "边缘检测（Sobel X）",
+            "边缘检测（Sobel Y）",
+            "边缘检测（Prewitt X）",
+            "边缘检测（Prewitt Y）",
+            "边缘检测（Laplacian）",
+            "边缘检测（Laplacian 8邻域）",
+            "模糊（均值）",
+            "锐化",
+            "自定义"
+          ]
+        },
+        "custom_kernel_size": {
+          "type": "int",
+          "default": 3
+        },
+        "conv_scan_speed": {
+          "type": "float",
+          "min": 0.005,
+          "max": 0.2,
+          "default": 0.01,
+          "step": 0.005,
+          "unit": "second"
+        },
+        "conv_display_width": {
+          "type": "int",
+          "default": 300,
+          "unit": "pixel"
+        },
+        "pool_input_shape": {
+          "type": "array",
+          "default": [8, 8]
+        },
+        "pool_window_size": {
+          "type": "array",
+          "default": [2, 2]
+        },
+        "pool_cell_size": {
+          "type": "int",
+          "default": 32,
+          "unit": "pixel"
+        },
+        "pool_scan_interval_sec": {
+          "type": "float",
+          "default": 0.18,
+          "unit": "second"
+        },
+        "pool_types": {
+          "type": "enum_list",
+          "default": "最大池化",
+          "options": ["最大池化", "平均池化"]
+        }
+      },
+      "session_state_keys": [
+        "conv_image_source",
+        "conv_kernel_name",
+        "conv_enable_gaussian",
+        "conv_upload",
+        "conv_row",
+        "conv_col",
+        "conv_scan_speed",
+        "conv_feature_map",
+        "conv_computed",
+        "conv_current_image_source",
+        "conv_current_kernel_name",
+        "conv_last_tick",
+        "is_scanning",
+        "scan_position",
+        "pool_input_map",
+        "pool_type",
+        "pool_window_row",
+        "pool_window_col",
+        "pool_feature_map",
+        "pool_computed",
+        "pool_current_type",
+        "is_pool_scanning",
+        "pool_scan_position"
+      ],
+      "ui_defaults": {
+        "layout": "wide",
+        "conv_section": "图像来源、卷积核、扫描按钮、感受野与输出特征图",
+        "pool_section": "池化类型、播放按钮、输入/输出特征图",
+        "theme_colors": {
+          "palette_bg_dark": "#1A1A1A"
+        }
+      }
+    },
+    "rnn": {
+      "module": "rnn",
+      "display_name": "RNN 核心机制可视化模块",
+      "version": "1.0",
+      "description": "RNN 时间展开、隐藏状态数值演算与 CNN/RNN 对比的教学可视化参数配置。",
+      "parameters": {
+        "unroll_steps": {
+          "type": "int",
+          "min": 3,
+          "max": 5,
+          "default": 4,
+          "step": 1
+        },
+        "active_step": {
+          "type": "int",
+          "min": 1,
+          "max": 4,
+          "default": 2,
+          "step": 1
+        },
+        "calc_step": {
+          "type": "int",
+          "min": 1,
+          "max": 4,
+          "default": 1,
+          "step": 1
+        },
+        "input_size": {
+          "type": "int",
+          "default": 2
+        },
+        "hidden_size": {
+          "type": "int",
+          "default": 3
+        },
+        "activation": {
+          "type": "string",
+          "default": "tanh"
+        },
+        "canvas": {
+          "type": "object",
+          "defaults": {
+            "unrolled_height": 260,
+            "calc_flow_width": 780,
+            "calc_flow_height": 230,
+            "compare_width": 1080
+          }
+        },
+        "theme_colors": {
+          "type": "object",
+          "defaults": {
+            "bg": "#0F0F0F",
+            "edge": "#555555",
+            "text": "#E6E6E6",
+            "future": "#464646",
+            "memory_arrow": "#F59E0B"
+          }
+        }
+      },
+      "session_state_keys": [
+        "rnn_step",
+        "rnn_step_slider",
+        "rnn_calc_step",
+        "rnn_calc_step_slider"
+      ],
+      "ui_defaults": {
+        "layout": "wide",
+        "sections": ["时间展开", "隐藏状态数值演算", "CNN 与 RNN 对比"],
+        "formula": "h_t = tanh(Wxh*x_t + Whh*h_(t-1))",
+        "image_use_container_width": false
+      }
+    },
+    "transformer": {
+      "module": "transformer",
+      "display_name": "Transformer 架构与注意力机制可视化模块",
+      "version": "1.0",
+      "description": "基于 Streamlit、PIL、NumPy 的 Transformer 静态架构图与注意力机制讲解配置。",
+      "parameters": {
+        "full_transformer_canvas": {
+          "type": "object",
+          "defaults": {
+            "width": 860,
+            "height": 560,
+            "encoder_x": 50,
+            "encoder_block_width": 260,
+            "decoder_x": 540,
+            "decoder_block_width": 260,
+            "block_height": 32,
+            "vertical_step": 46
+          }
+        },
+        "qkv_flow_canvas": {
+          "type": "object",
+          "defaults": {
+            "width": 1080,
+            "height": 330,
+            "token_count": 3,
+            "tokens": ["I", "love", "AI"]
+          }
+        },
+        "multihead_attention_canvas": {
+          "type": "object",
+          "defaults": {
+            "width": 1080,
+            "height": 380,
+            "num_heads": 4,
+            "head_width": 120,
+            "head_height": 40,
+            "column_step": 155
+          }
+        },
+        "encoder_layer_canvas": {
+          "type": "object",
+          "defaults": {
+            "block_width": 280,
+            "block_height": 68,
+            "gap": 18
+          }
+        },
+        "comparison_canvas": {
+          "type": "object",
+          "defaults": {
+            "width": 1080,
+            "height": 310,
+            "models": ["CNN", "RNN", "Transformer"]
+          }
+        },
+        "attention_formula": {
+          "type": "string",
+          "default": "Attention(Q,K,V)=softmax(QK^T/sqrt(d_k))V"
+        },
+        "theme_colors": {
+          "type": "object",
+          "defaults": {
+            "bg": "#0F172A",
+            "text": "#E6E6E6",
+            "edge": "#58677D",
+            "cross_attention": "#FBBF24"
+          }
+        }
+      },
+      "session_state_keys": [],
+      "ui_defaults": {
+        "layout": "wide",
+        "sections": [
+          "整体架构：Encoder-Decoder 全景",
+          "核心机制一：自注意力（Q / K / V）",
+          "核心机制二：多头注意力（Multi-Head Attention）",
+          "Encoder 单层结构",
+          "CNN / RNN / Transformer 对比"
+        ],
+        "use_container_width": true,
+        "has_training_loop": false
+      }
+    }
+  }
+}

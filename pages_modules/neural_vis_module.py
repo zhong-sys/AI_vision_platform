@@ -10,38 +10,18 @@ NeuralVis 神经网络可视化训练模块
 - render_neural_network_viz : Streamlit 主渲染入口
 """
 
-import sys
 import os
 import time
-import json
-import subprocess
 
 import numpy as np
 import streamlit as st
 import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
-import os
 
-# 直接指定云端和本地都存在的字体路径
-font_path = '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc'
-if not os.path.exists(font_path):
-    font_path = 'C:/Windows/Fonts/msyh.ttc'
-
-if os.path.exists(font_path):
-    from matplotlib.font_manager import FontProperties
-    fp = FontProperties(fname=font_path)
-    plt.rcParams['font.family'] = fp.get_name()
-else:
-    plt.rcParams['font.family'] = 'sans-serif'
-plt.rcParams['axes.unicode_minus'] = False
-
-def resource_path(relative_path):
-    """获取资源文件的绝对路径，兼容 PyInstaller 打包后的 exe 环境。"""
-    if hasattr(sys, "_MEIPASS"):
-        return os.path.join(sys._MEIPASS, relative_path)
-    return os.path.join(os.path.abspath("."), relative_path)
+# ==================== 兼容 EXE 打包的中文字体设置 ====================
+matplotlib.rcParams["font.sans-serif"] = ["SimHei", "Microsoft YaHei", "Arial Unicode MS"]
+matplotlib.rcParams["axes.unicode_minus"] = False
 
 
 # =============================================================================
@@ -412,6 +392,15 @@ def _get_connection_color_weight(val, max_w):
         return (r, g, b), 0.3 + intensity * 2.5, 0.25 + intensity * 0.60
 
 
+def _get_connection_color_forward(val, max_w):
+    """前向传播连线：统一蓝色系，强度对应权重绝对值。"""
+    intensity = abs(val) / max_w
+    r = 0.10 + intensity * 0.10
+    g = 0.35 + intensity * 0.35
+    b = 0.60 + intensity * 0.35
+    return (r, g, b), 0.3 + intensity * 2.5, 0.25 + intensity * 0.60
+
+
 def plot_network_structure(layer_sizes, mode="weights", weights=None, activations=None, grads_W=None, figsize=None):
     """
     绘制神经网络拓扑结构。
@@ -474,8 +463,10 @@ def plot_network_structure(layer_sizes, mode="weights", weights=None, activation
                         color = _get_neuron_color_backward(intensity)
                         linewidth = 0.3 + intensity * 3.0
                         alpha = 0.30 + intensity * 0.55
-                    elif mode in ("weights", "forward"):
+                    elif mode == "weights":
                         color, linewidth, alpha = _get_connection_color_weight(val, max_w)
+                    elif mode == "forward":
+                        color, linewidth, alpha = _get_connection_color_forward(val, max_w)
                     else:
                         color = "#BBBBBB"
                         linewidth = 0.3
@@ -660,7 +651,8 @@ def _init_session_state():
         "nv_layer_sizes": None,
         "nv_target_epochs": 100,
         "nv_last_info": None,
-        "nv_step_requested": False,
+        "nv_anim_phase": None,
+        "nv_anim_info": None,
         "nv_viz_mode": "weights",
         "nv_auto_training": False,
     }
@@ -676,26 +668,16 @@ def _init_session_state():
 def render_neural_network_viz():
     """渲染完整的神经网络可视化训练界面。主入口函数。"""
     _init_session_state()
-    st.markdown(
-        '<a href="/" target="_self" style="text-decoration:none; font-size:14px; color:#1A7EC1;">🏠 返回首页</a>',
-        unsafe_allow_html=True)
-    st.markdown("---")
+
     # 页面标题与说明
     st.markdown("""
     <div style="margin-bottom: 8px;">
         <span style="font-size: 22px; font-weight: bold; color: #0F5B9E;">🧬 基础神经网络可视化训练</span>
     </div>
-    <div style="color: #555; font-size: 14px; margin-bottom: 16px;">
+    <div style="color: #555; font-size: 16px; margin-bottom: 16px;">
         通过调整网络结构、激活函数与损失函数，观察神经网络前向传播、反向传播与权重更新的完整过程。
     </div>
     """, unsafe_allow_html=True)
-
-    # ---- 单步执行：先计算 + 播放动画（在页面顶部全宽显示）----
-    if st.session_state.nv_step_requested and st.session_state.nv_trainer is not None:
-        info = _do_single_step()
-        st.session_state.nv_step_requested = False
-        st.session_state.nv_viz_mode = "weights"
-        _play_step_animation(info)
 
     # ---- 自动训练 ----
     if st.session_state.nv_auto_training and st.session_state.nv_trainer is not None:
@@ -756,10 +738,6 @@ def render_neural_network_viz():
         with btn_col4:
             auto_clicked = st.button("▶️ 自动训练", key="nv_btn_auto", use_container_width=True)
 
-        st.markdown("<div style='margin-top:6px;'></div>", unsafe_allow_html=True)
-        desktop_clicked = st.button("🎬 在桌面版演示", key="nv_btn_desktop", use_container_width=True,
-                                     help="在独立的 PySide6 窗口中打开流畅的动画演示，参数与当前设置同步")
-
         # ---- 处理按钮事件 ----
 
         # 构建网络
@@ -780,6 +758,8 @@ def render_neural_network_viz():
             st.session_state.nv_layer_sizes = layer_sizes
             st.session_state.nv_target_epochs = max_epochs
             st.session_state.nv_last_info = None
+            st.session_state.nv_anim_phase = None
+            st.session_state.nv_anim_info = None
             st.session_state.nv_viz_mode = "weights"
             st.success(f"✅ 网络构建成功！结构: {layer_sizes}")
             st.info(_get_theory_text(0))
@@ -794,7 +774,8 @@ def render_neural_network_viz():
             st.session_state.nv_target_epochs = 100
             st.session_state.nv_last_info = None
             st.session_state.nv_training = False
-            st.session_state.nv_step_requested = False
+            st.session_state.nv_anim_phase = None
+            st.session_state.nv_anim_info = None
             st.session_state.nv_viz_mode = "weights"
             st.info("🔄 状态已重置")
 
@@ -803,8 +784,12 @@ def render_neural_network_viz():
             if not st.session_state.nv_network_built or st.session_state.nv_trainer is None:
                 st.error("⚠️ 请先点击「构建网络」后再执行单步训练。")
             else:
-                st.session_state.nv_step_requested = True
-                st.rerun()
+                info = _do_single_step()
+                if info is not None:
+                    st.session_state.nv_anim_info = info
+                    st.session_state.nv_anim_phase = 0
+                    st.session_state.nv_viz_mode = "weights"
+                    st.rerun()
 
         # 自动训练
         if auto_clicked:
@@ -812,25 +797,10 @@ def render_neural_network_viz():
                 st.error("⚠️ 请先点击「构建网络」后再开始自动训练。")
             else:
                 st.session_state.nv_target_epochs = max_epochs
+                st.session_state.nv_anim_phase = None
+                st.session_state.nv_anim_info = None
                 st.session_state.nv_auto_training = True
                 st.rerun()
-
-        # 启动桌面版演示
-        if desktop_clicked:
-            layer_sizes = [input_size] + hidden_layers + [output_size]
-            params = {
-                "input_size": input_size,
-                "hidden_layers": hidden_layers,
-                "output_size": output_size,
-                "activation": activation,
-                "loss_type": loss_type,
-                "lr": lr,
-            }
-            try:
-                launch_neuralvis_desktop(params)
-                st.success("✅ 桌面版 NeuralVis 已启动！请查看任务栏或桌面窗口。")
-            except Exception as e:
-                st.error(f"❌ 启动桌面版失败: {e}")
 
     # ==================== 右侧可视化区域 ====================
     with right_col:
@@ -854,49 +824,96 @@ def render_neural_network_viz():
         with tab_network:
             if st.session_state.nv_layer_sizes is not None:
                 try:
-                    # 可视化模式切换
-                    viz_mode = st.radio(
-                        "显示模式",
-                        ["weights", "forward", "backward", "structure"],
-                        index=["weights", "forward", "backward", "structure"].index(st.session_state.nv_viz_mode),
-                        key="nv_viz_mode_radio",
-                        format_func=lambda m: {
-                            "weights": "🔵 权重视图（正蓝负红）",
-                            "forward": "🔷 前向传播（激活值）",
-                            "backward": "🔴 反向传播（梯度）",
-                            "structure": "⚪ 纯拓扑结构",
-                        }[m],
-                        horizontal=True,
-                    )
-                    st.session_state.nv_viz_mode = viz_mode
+                    anim_phase = st.session_state.nv_anim_phase
+                    anim_info = st.session_state.nv_anim_info
 
-                    weights = None
-                    activations = None
-                    grads_W = None
-                    if st.session_state.nv_last_info is not None:
-                        weights = st.session_state.nv_last_info.get("weights")
-                        activations = st.session_state.nv_last_info.get("activations")
-                        grads_W = st.session_state.nv_last_info.get("grads_W")
+                    if anim_phase is not None and anim_info is not None:
+                        phase_config = {
+                            0: {
+                                "mode": "forward",
+                                "title": "🔷 Step 1/3 — 前向传播",
+                                "desc": "数据从输入层经过隐藏层流向输出层，每层通过加权求和与激活函数进行非线性变换",
+                                "bg": "linear-gradient(90deg, #e3f2fd, #bbdefb)",
+                                "title_color": "#1565c0",
+                            },
+                            1: {
+                                "mode": "backward",
+                                "title": "🔴 Step 2/3 — 反向传播",
+                                "desc": "计算预测值与真实值的误差（损失），梯度从输出层向输入层逐层回传",
+                                "bg": "linear-gradient(90deg, #ffebee, #ffcdd2)",
+                                "title_color": "#c62828",
+                            },
+                            2: {
+                                "mode": "weights",
+                                "title": "🔵 Step 3/3 — 权重更新",
+                                "desc": "根据梯度和学习率调整权重，使下一次预测更接近真实值",
+                                "bg": "linear-gradient(90deg, #e8f5e9, #c8e6c9)",
+                                "title_color": "#2e7d32",
+                            },
+                        }
+                        current = phase_config.get(anim_phase, phase_config[2])
 
-                    fig = plot_network_structure(
-                        st.session_state.nv_layer_sizes,
-                        mode=viz_mode,
-                        weights=weights,
-                        activations=activations,
-                        grads_W=grads_W,
-                    )
-                    st.pyplot(fig)
-                    plt.close(fig)
+                        st.markdown(f"""
+                        <div style="background: {current["bg"]}; padding: 12px 20px; border-radius: 8px; margin-bottom: 10px;">
+                            <span style="font-size: 16px; font-weight: bold; color: {current["title_color"]};">{current["title"]}</span>
+                            <span style="color: #555; margin-left: 10px;">{current["desc"]}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
 
-                    st.markdown("""
-                    <div style="font-size:12px; color:#666; margin-top:8px;">
-                    <b>图例说明：</b><br>
-                    • <b>权重视图</b>：正权重偏蓝，负权重偏红，连线粗细表示权重绝对值大小<br>
-                    • <b>前向传播</b>：神经元亮度对应激活值大小（取第一个样本展示）<br>
-                    • <b>反向传播</b>：神经元与连线颜色对应梯度绝对值大小（红色系）<br>
-                    • <b>纯拓扑</b>：仅显示网络结构，不带数值映射
-                    </div>
-                    """, unsafe_allow_html=True)
+                        fig = plot_network_structure(
+                            st.session_state.nv_layer_sizes,
+                            mode=current["mode"],
+                            weights=anim_info.get("weights"),
+                            activations=anim_info.get("activations"),
+                            grads_W=anim_info.get("grads_W"),
+                            figsize=(8, 5),
+                        )
+                        st.pyplot(fig, use_container_width=True)
+                        plt.close(fig)
+                    else:
+                        # 可视化模式切换
+                        viz_mode = st.radio(
+                            "显示模式",
+                            ["weights", "forward", "backward", "structure"],
+                            index=["weights", "forward", "backward", "structure"].index(st.session_state.nv_viz_mode),
+                            key="nv_viz_mode_radio",
+                            format_func=lambda m: {
+                                "weights": "🔵 权重视图（正蓝负红）",
+                                "forward": "🔷 前向传播（激活值）",
+                                "backward": "🔴 反向传播（梯度）",
+                                "structure": "⚪ 纯拓扑结构",
+                            }[m],
+                            horizontal=True,
+                        )
+                        st.session_state.nv_viz_mode = viz_mode
+
+                        weights = None
+                        activations = None
+                        grads_W = None
+                        if st.session_state.nv_last_info is not None:
+                            weights = st.session_state.nv_last_info.get("weights")
+                            activations = st.session_state.nv_last_info.get("activations")
+                            grads_W = st.session_state.nv_last_info.get("grads_W")
+
+                        fig = plot_network_structure(
+                            st.session_state.nv_layer_sizes,
+                            mode=viz_mode,
+                            weights=weights,
+                            activations=activations,
+                            grads_W=grads_W,
+                        )
+                        st.pyplot(fig)
+                        plt.close(fig)
+
+                        st.markdown("""
+                        <div style="font-size:12px; color:#666; margin-top:8px;">
+                        <b>图例说明：</b><br>
+                        • <b>权重视图</b>：正权重偏蓝，负权重偏红，连线粗细表示权重绝对值大小<br>
+                        • <b>前向传播</b>：神经元亮度对应激活值大小（取第一个样本展示）<br>
+                        • <b>反向传播</b>：神经元与连线颜色对应梯度绝对值大小（红色系）<br>
+                        • <b>纯拓扑</b>：仅显示网络结构，不带数值映射
+                        </div>
+                        """, unsafe_allow_html=True)
                 except Exception as e:
                     st.error(f"绘制网络结构时出错: {e}")
             else:
@@ -948,6 +965,16 @@ def render_neural_network_viz():
             else:
                 st.caption("暂无日志，构建网络并开始训练后将在此显示。")
 
+    # 三阶段单步动画：每次渲染一帧，等待后切换到下一帧
+    if st.session_state.nv_anim_phase is not None:
+        time.sleep(2.0)
+        if st.session_state.nv_anim_phase < 2:
+            st.session_state.nv_anim_phase += 1
+        else:
+            st.session_state.nv_anim_phase = None
+            st.session_state.nv_anim_info = None
+        st.rerun()
+
 
 # =============================================================================
 # 6. 训练控制函数
@@ -984,70 +1011,6 @@ def _do_single_step():
     except Exception as e:
         st.error(f"单步训练时发生错误: {e}")
         return None
-
-
-def _play_step_animation(info):
-    """单步执行后播放三步可视化演示：前向传播 → 反向传播 → 权重更新。
-    使用 st.empty() 占位符在单次脚本执行中循环切换，模拟动画效果。
-    """
-    layer_sizes = st.session_state.nv_layer_sizes
-    if layer_sizes is None or info is None:
-        return
-
-    placeholder = st.empty()
-
-    # 动画图使用更小的固定尺寸，避免超出屏幕
-    anim_figsize = (8, 5)
-
-    # 帧1：前向传播
-    with placeholder:
-        _, center_col, _ = st.columns([1, 3, 1])
-        with center_col:
-            st.markdown("""
-            <div style="background: linear-gradient(90deg, #e3f2fd, #bbdefb); padding: 12px 20px; border-radius: 8px; margin-bottom: 10px;">
-                <span style="font-size: 16px; font-weight: bold; color: #1565c0;">🔷 Step 1/3 — 前向传播</span>
-                <span style="color: #555; margin-left: 10px;">数据从输入层经过隐藏层流向输出层，每层通过加权求和与激活函数进行非线性变换</span>
-            </div>
-            """, unsafe_allow_html=True)
-            fig = plot_network_structure(layer_sizes, mode="forward", activations=info["activations"], figsize=anim_figsize)
-            st.pyplot(fig, use_container_width=True)
-            plt.close(fig)
-    time.sleep(2.0)
-
-    # 帧2：反向传播
-    with placeholder:
-        _, center_col, _ = st.columns([1, 3, 1])
-        with center_col:
-            st.markdown("""
-            <div style="background: linear-gradient(90deg, #ffebee, #ffcdd2); padding: 12px 20px; border-radius: 8px; margin-bottom: 10px;">
-                <span style="font-size: 16px; font-weight: bold; color: #c62828;">🔴 Step 2/3 — 反向传播</span>
-                <span style="color: #555; margin-left: 10px;">计算预测值与真实值的误差（损失），梯度从输出层向输入层逐层回传</span>
-            </div>
-            """, unsafe_allow_html=True)
-            fig = plot_network_structure(layer_sizes, mode="backward", grads_W=info["grads_W"], figsize=anim_figsize)
-            st.pyplot(fig, use_container_width=True)
-            plt.close(fig)
-    time.sleep(2.0)
-
-    # 帧3：权重更新
-    with placeholder:
-        _, center_col, _ = st.columns([1, 3, 1])
-        with center_col:
-            st.markdown("""
-            <div style="background: linear-gradient(90deg, #e8f5e9, #c8e6c9); padding: 12px 20px; border-radius: 8px; margin-bottom: 10px;">
-                <span style="font-size: 16px; font-weight: bold; color: #2e7d32;">🔵 Step 3/3 — 权重更新</span>
-                <span style="color: #555; margin-left: 10px;">根据梯度和学习率调整权重，使下一次预测更接近真实值</span>
-            </div>
-            """, unsafe_allow_html=True)
-            fig = plot_network_structure(
-                layer_sizes, mode="weights",
-                weights=info["weights"], activations=info["activations"], figsize=anim_figsize
-            )
-            st.pyplot(fig, use_container_width=True)
-            plt.close(fig)
-    time.sleep(2.0)
-
-    # 动画结束，让下方常规 UI 正常渲染（不再手动 empty()，避免 React DOM 时序错乱）
 
 
 def _execute_auto_training():
@@ -1096,27 +1059,3 @@ def _execute_auto_training():
 
     except Exception as e:
         st.error(f"自动训练过程中发生错误: {e}")
-
-
-# =============================================================================
-# 7. 桌面版启动函数（第二种方案：Streamlit 配置 + PySide6 演示）
-# =============================================================================
-
-def launch_neuralvis_desktop(params: dict):
-    current_dir = os.path.dirname(os.path.abspath(__file__))  # pages_modules目录
-    neuralvis_dir = os.path.join(current_dir, "NeuralVis")
-
-    # ✅ 改为 show.py（你的桌面应用入口）
-    main_py = os.path.join(neuralvis_dir, "show.py")
-
-    if not os.path.isfile(main_py):
-        raise FileNotFoundError(f"找不到 NeuralVis 入口文件: {main_py}")
-
-    # 写入配置文件（供桌面应用读取）
-    config_path = os.path.join(neuralvis_dir, "streamlit_config.json")
-    with open(config_path, "w", encoding="utf-8") as f:
-        json.dump(params, f, ensure_ascii=False, indent=2)
-
-    # 启动桌面应用
-    cmd = [sys.executable, main_py, "--config", config_path]
-    subprocess.Popen(cmd, cwd=neuralvis_dir)  # 注意设置工作目录，以便相对导入生效

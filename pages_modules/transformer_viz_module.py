@@ -478,9 +478,9 @@ def nv_render_transformer_viz():
     st.title("注意力机制网络（Transformer）")
     st.caption("不再按顺序传递记忆，而是让所有位置直接建立关联")
 
-    st.markdown(
-        '<a href="/" target="_self" style="text-decoration:none; font-size:14px; color:#1A7EC1;">🏠 返回首页</a>',
-        unsafe_allow_html=True)
+    if st.button("🏠 返回首页", key="trans_back_home", use_container_width=False):
+        st.session_state.current_page = "home"
+        st.rerun()
     st.markdown("---")
     st.subheader("为什么需要它？")
     st.info(

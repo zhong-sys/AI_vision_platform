@@ -1,0 +1,345 @@
+{
+  "knowledge_base": "ai_algorithm_visualization_platform_machine_learning",
+  "display_name": "河海大学 AI 算法可视化学习平台机器学习模块知识库",
+  "version": "1.0",
+  "description": "面向本科生人工智能与机器学习课程的可视化学习模块配置，覆盖分类、回归、聚类三类算法页面、顶部概念引入小游戏、参数联动主图和教学说明。",
+  "modules": {
+    "classification": {
+      "module": "classification",
+      "display_name": "分类算法可视化学习模块",
+      "version": "1.0",
+      "description": "通过决策边界、训练测试样本、准确率和混淆矩阵帮助学生理解分类任务。",
+      "source_file": "dist/launcher/_internal/pages_modules/classification_lab.py",
+      "data_seed": 21,
+      "algorithms": [
+        "knn",
+        "svm",
+        "nb",
+        "rf"
+      ],
+      "datasets": {
+        "knn": [
+          "knn_moons",
+          "knn_circles",
+          "knn_local_vote"
+        ],
+        "svm": [
+          "svm_linear_margin",
+          "svm_soft_margin",
+          "svm_kernel_curve"
+        ],
+        "nb": [
+          "nb_independent_gaussian",
+          "nb_overlap_gaussian"
+        ],
+        "rf": [
+          "rf_block_regions",
+          "rf_step_regions",
+          "rf_noisy_blocks"
+        ]
+      },
+      "parameters": [
+        "sample_count",
+        "noise",
+        "test_size",
+        "n_neighbors",
+        "weight_mode",
+        "C",
+        "kernel",
+        "gamma",
+        "alpha",
+        "n_estimators",
+        "max_depth",
+        "min_samples_split"
+      ],
+      "metrics": [
+        "train_accuracy",
+        "test_accuracy",
+        "train_test_gap",
+        "misclassified_count"
+      ],
+      "visualization_types": [
+        "decision_boundary",
+        "train_test_sample_distribution",
+        "confusion_matrix",
+        "error_highlight"
+      ],
+      "intro_game": {
+        "title": "AI 分类小测验",
+        "type": "single_choice_quiz",
+        "purpose": "帮助学生理解分类任务是根据样本特征判断类别归属。",
+        "session_state_keys": [
+          "classification_intro_game_index",
+          "classification_intro_game_submitted",
+          "classification_intro_game_answer"
+        ]
+      },
+      "session_state_keys": [
+        "cls_lab_algorithm",
+        "cls_lab_dataset",
+        "cls_lab_seed",
+        "cls_lab_view_nonce",
+        "cls_lab_prev_algorithm",
+        "classification_intro_game_index",
+        "classification_intro_game_submitted",
+        "classification_intro_game_answer"
+      ],
+      "ui_defaults": {
+        "algorithm": "knn",
+        "dataset": "knn_moons",
+        "sample_count": 220,
+        "noise": 0.18,
+        "test_size": 0.28
+      },
+      "teaching_notes": [
+        "需明确区分类别编号与类别语义。",
+        "参数调节后应同步更新决策边界与混淆矩阵。",
+        "顶部小游戏只用于概念引入，不得影响主图与训练流程。"
+      ]
+    },
+    "regression": {
+      "module": "regression",
+      "display_name": "回归算法可视化学习模块",
+      "version": "1.0",
+      "description": "通过拟合曲线、结果诊断图和误差指标帮助学生理解连续数值预测问题。",
+      "source_file": "dist/launcher/_internal/pages_modules/regression_lab.py",
+      "data_seed": 13,
+      "algorithms": [
+        "linear",
+        "poly",
+        "ridge",
+        "lasso",
+        "svr",
+        "tree",
+        "rf"
+      ],
+      "datasets": {
+        "linear": [
+          "linear_trend",
+          "linear_outliers"
+        ],
+        "poly": [
+          "poly_quadratic",
+          "poly_cubic",
+          "poly_sine"
+        ],
+        "ridge": [
+          "ridge_correlated",
+          "ridge_dense_noise"
+        ],
+        "lasso": [
+          "lasso_sparse_signal",
+          "lasso_correlated_noise"
+        ],
+        "svr": [
+          "svr_wave_band",
+          "svr_noisy_curve"
+        ],
+        "tree": [
+          "tree_piecewise",
+          "tree_local_steps"
+        ],
+        "rf": [
+          "rf_piecewise_noise",
+          "rf_wave_ensemble"
+        ]
+      },
+      "parameters": [
+        "sample_count",
+        "noise",
+        "test_size",
+        "fit_intercept",
+        "standardize",
+        "degree",
+        "alpha",
+        "C",
+        "epsilon",
+        "kernel",
+        "gamma",
+        "max_depth",
+        "min_samples_split",
+        "n_estimators"
+      ],
+      "metrics": [
+        "train_r2",
+        "test_r2",
+        "mse",
+        "mae",
+        "rmse"
+      ],
+      "visualization_types": [
+        "fitted_curve",
+        "sample_distribution",
+        "diagnostic_visual",
+        "residual_analysis",
+        "prediction_comparison"
+      ],
+      "intro_game": {
+        "title": "AI 数值预测小游戏",
+        "type": "numeric_estimation_quiz",
+        "purpose": "帮助学生理解回归任务是预测连续数值而不是做离散分类。",
+        "session_state_keys": [
+          "regression_intro_game_index",
+          "regression_intro_game_submitted",
+          "regression_intro_game_answer"
+        ]
+      },
+      "session_state_keys": [
+        "reg_lab_algorithm",
+        "reg_lab_dataset",
+        "reg_lab_seed",
+        "reg_lab_view_nonce",
+        "reg_lab_prev_algorithm",
+        "regression_intro_game_index",
+        "regression_intro_game_submitted",
+        "regression_intro_game_answer"
+      ],
+      "ui_defaults": {
+        "algorithm": "linear",
+        "dataset": "linear_trend",
+        "sample_count": 180,
+        "noise": 0.18,
+        "test_size": 0.3
+      },
+      "teaching_notes": [
+        "图中坐标轴与结果解读应保持中文且语义一致。",
+        "结果诊断图应与拟合曲线主图分开显示，避免过大。",
+        "顶部小游戏用于建立连续数值预测直觉，不应改变正式训练流程。"
+      ]
+    },
+    "clustering": {
+      "module": "clustering",
+      "display_name": "聚类算法可视化学习模块",
+      "version": "1.0",
+      "description": "通过聚类结构图、结构分析图和无监督评价指标帮助学生理解隐藏群体发现问题。",
+      "source_file": "dist/launcher/_internal/pages_modules/clustering_lab.py",
+      "data_seed": 17,
+      "algorithms": [
+        "kmeans",
+        "dbscan",
+        "agg",
+        "gmm"
+      ],
+      "datasets": {
+        "kmeans": [
+          "kmeans_blobs",
+          "kmeans_noisy_blobs"
+        ],
+        "dbscan": [
+          "dbscan_moons",
+          "dbscan_circles",
+          "dbscan_vary_density"
+        ],
+        "agg": [
+          "agg_nested_blobs",
+          "agg_bridge_groups"
+        ],
+        "gmm": [
+          "gmm_ellipses",
+          "gmm_overlap_ellipses"
+        ]
+      },
+      "parameters": [
+        "sample_count",
+        "noise",
+        "n_clusters",
+        "init",
+        "n_init",
+        "max_iter",
+        "eps",
+        "min_samples",
+        "linkage",
+        "n_components",
+        "covariance_type"
+      ],
+      "metrics": [
+        "silhouette_score",
+        "davies_bouldin_index",
+        "calinski_harabasz_index",
+        "cluster_count",
+        "noise_count"
+      ],
+      "visualization_types": [
+        "cluster_structure",
+        "cluster_centers",
+        "density_connection",
+        "noise_point_highlight",
+        "hierarchical_structure_explanation",
+        "gmm_probability_explanation",
+        "analysis_visual"
+      ],
+      "intro_game": {
+        "title": "AI 分组小游戏",
+        "type": "group_count_quiz",
+        "purpose": "帮助学生理解聚类是在没有标准标签时根据相似性发现群体结构。",
+        "session_state_keys": [
+          "clustering_intro_game_index",
+          "clustering_intro_game_submitted",
+          "clustering_intro_game_answer"
+        ]
+      },
+      "session_state_keys": [
+        "cluster_lab_algorithm",
+        "cluster_lab_dataset",
+        "cluster_lab_seed",
+        "cluster_lab_view_nonce",
+        "cluster_lab_prev_algorithm",
+        "clustering_intro_game_index",
+        "clustering_intro_game_submitted",
+        "clustering_intro_game_answer"
+      ],
+      "ui_defaults": {
+        "algorithm": "kmeans",
+        "dataset": "kmeans_blobs",
+        "sample_count": 180,
+        "noise": 0.16
+      },
+      "teaching_notes": [
+        "聚类没有监督标签，不应使用准确率作为统一指标。",
+        "英文指标名称需要同步提供中文解释。",
+        "说明框、结构解读和图内文字应避免重叠。"
+      ]
+    }
+  },
+  "shared_config": {
+    "dependencies": [
+      "streamlit",
+      "numpy",
+      "Pillow",
+      "matplotlib"
+    ],
+    "ui_config": {
+      "language": "zh-CN",
+      "layout_style": "顶部概念引入区 + 正式学习区",
+      "deep_columns_nesting_allowed": false,
+      "main_visual_priority": "high"
+    },
+    "teaching_config": {
+      "audience": "本科生人工智能与机器学习课程",
+      "teaching_goal": "通过参数调节、图像变化和结果指标帮助学生建立算法直觉",
+      "intro_game_rule": "小游戏只作为概念引入，不干扰正式训练和可视化流程"
+    },
+    "error_messages": {
+      "broken_image": "主图渲染异常，请检查图像对象输出与页面渲染方式。",
+      "columns_nesting": "页面布局不能出现深层 st.columns 嵌套。",
+      "json_invalid": "配置文件必须保持合法 JSON 格式。"
+    },
+    "validation_rules": [
+      "不得修改神经网络模块、国产大模型模块与部署模块。",
+      "不得生成无关文件。",
+      "不得引入 PyTorch、TensorFlow 等重型框架。",
+      "顶部小游戏必须能提交并切换题目。",
+      "主图、辅助图和指标区必须正常渲染。"
+    ],
+    "prompt_standardization": {
+      "template_style": "角色-任务-格式",
+      "example_output_role": "约束页面结构、行为预期与验收标准",
+      "config_role": "约束模块边界、参数命名、指标和共享规则"
+    },
+    "screenshot_recommendations": [
+      "分类截图应包含算法选择、数据集、决策边界与混淆矩阵。",
+      "回归截图应包含拟合曲线、结果诊断图与误差指标。",
+      "聚类截图应包含聚类主图、结构分析图与聚类评价指标。"
+    ]
+  }
+}

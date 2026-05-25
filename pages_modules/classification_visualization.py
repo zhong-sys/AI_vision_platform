@@ -90,7 +90,7 @@ def render_confusion_matrix_image(matrix, class_names, title):
 def render_knn_visual(context):
     image, draw, plot = create_canvas(
         title=context["visual_title"],
-        subtitle="圆点表示训练样本，菱形表示测试样本；星形是当前查询点，连线表示最近的邻居。",
+        subtitle="圆点表示训练样本，菱形表示测试样本，背景颜色表示模型划分出的分类区域。",
     )
 
     x_min, x_max, y_min, y_max = compute_bounds(context["X_train"], context["X_test"])
@@ -102,32 +102,8 @@ def render_knn_visual(context):
     draw = ImageDraw.Draw(image)
 
     draw_samples(draw, context["X_train"], context["y_train"], context["X_test"], context["y_test"], context["y_test_pred"], plot, x_min, x_max, y_min, y_max)
-
-    query_point = context["query_point"]
-    query_px, query_py = project_point(query_point, plot, x_min, x_max, y_min, y_max)
-    draw_star(draw, query_px, query_py, 14, fill=(255, 255, 255), outline=(31, 45, 61))
-
-    for neighbor_point in context["neighbor_points"]:
-        n_px, n_py = project_point(neighbor_point, plot, x_min, x_max, y_min, y_max)
-        draw.line([(query_px, query_py), (n_px, n_py)], fill=(121, 144, 167), width=2)
-        draw.ellipse([n_px - 10, n_py - 10, n_px + 10, n_py + 10], outline=(242, 153, 74), width=3)
-
-    draw_label_box(
-        draw,
-        plot["left"] + 18,
-        plot["top"] + 18,
-        250,
-        110,
-        "查询点投票解释",
-        [
-            "查询点真实类别：类别 {0}".format(context["query_true"]),
-            "查询点预测类别：类别 {0}".format(context["query_pred"]),
-            "投票概况：" + "，".join("类别 {0}: {1:.2f}".format(label, score) for label, score in context["vote_scores"].items()),
-        ],
-    )
-    draw_footer_label(draw, plot, "KNN 看的是“谁离我近”，因此局部邻域结构会直接决定边界形状。")
+    draw_footer_label(draw, plot, "KNN 通过邻近样本投票形成局部边界，因此 K 值变化会直接影响边界平滑程度。")
     return image
-
 
 def render_svm_visual(context):
     image, draw, plot = create_canvas(
@@ -189,24 +165,8 @@ def render_nb_visual(context):
     for entry in context["distribution_boxes"]:
         draw_axis_aligned_box(draw, entry["center"], entry["std"], plot, x_min, x_max, y_min, y_max, entry["color"])
 
-    qx, qy = project_point(context["query_point"], plot, x_min, x_max, y_min, y_max)
-    draw_star(draw, qx, qy, 14, fill=(255, 255, 255), outline=(31, 45, 61))
-    draw_label_box(
-        draw,
-        plot["left"] + 18,
-        plot["top"] + 18,
-        290,
-        108,
-        "概率解释",
-        [
-            "查询点属于类别 0 的概率：{0:.1f}%".format(context["query_proba"][0] * 100),
-            "查询点属于类别 1 的概率：{0:.1f}%".format(context["query_proba"][1] * 100),
-            "模型会把概率更大的类别作为最终预测结果。",
-        ],
-    )
-    draw_footer_label(draw, plot, "朴素贝叶斯不是在找最近邻，而是在比较各类别的条件概率。")
+    draw_footer_label(draw, plot, "朴素贝叶斯比较的是各类别的条件概率，因此边界会随着概率区域变化而调整。")
     return image
-
 
 def render_rf_visual(context):
     width = 1180
@@ -256,9 +216,9 @@ def render_rf_visual(context):
 
 
 def create_canvas(title, subtitle):
-    width = 1180
-    height = 860
-    plot = {"left": 126, "top": 140, "width": 980, "height": 500}
+    width = 1320
+    height = 920
+    plot = {"left": 110, "top": 150, "width": 1100, "height": 560}
     image = Image.new("RGB", (width, height), (255, 255, 255))
     draw = ImageDraw.Draw(image)
     title_font = load_font(30, bold=True)
@@ -423,11 +383,13 @@ def draw_axis_aligned_box(draw, center, std, plot, x_min, x_max, y_min, y_max, c
 def draw_label_box(draw, x, y, width, height, title, lines):
     title_font = load_font(20, bold=True)
     text_font = load_font(16)
-    draw.rounded_rectangle([x, y, x + width, y + height], radius=16, fill=(255, 255, 255), outline=(219, 228, 238))
+    wrapped_groups = [wrap_text(draw, line, text_font, width - 32) for line in lines]
+    text_line_count = sum(max(len(group), 1) for group in wrapped_groups)
+    box_height = max(height, 50 + text_line_count * 22 + 16)
+    draw.rounded_rectangle([x, y, x + width, y + box_height], radius=16, fill=(255, 255, 255), outline=(219, 228, 238))
     draw.text((x + 16, y + 12), title, fill=TITLE_COLOR, font=title_font)
     text_y = y + 46
-    for line in lines:
-        wrapped = wrap_text(draw, line, text_font, width - 32)
+    for wrapped in wrapped_groups:
         for part in wrapped:
             draw.text((x + 16, text_y), part, fill=TEXT_COLOR, font=text_font)
             text_y += 22
@@ -585,8 +547,8 @@ def draw_panel_title_centered(draw, plot, title):
 
 
 def render_rf_visual(context):
-    width = 1180
-    height = 860
+    width = 1320
+    height = 920
     image = Image.new("RGB", (width, height), (255, 255, 255))
     draw = ImageDraw.Draw(image)
     title_font = load_font(30, bold=True)
@@ -600,8 +562,8 @@ def render_rf_visual(context):
         font=text_font,
     )
 
-    left_plot = {"left": 60, "top": 170, "width": 480, "height": 470}
-    right_plot = {"left": 640, "top": 170, "width": 480, "height": 470}
+    left_plot = {"left": 70, "top": 182, "width": 540, "height": 500}
+    right_plot = {"left": 710, "top": 182, "width": 540, "height": 500}
 
     x_min, x_max, y_min, y_max = compute_bounds(context["X_train"], context["X_test"])
     forest_map = predict_grid_labels(context["model"], context["scaler"], x_min, x_max, y_min, y_max, 240, 200)
@@ -651,10 +613,10 @@ def render_rf_visual(context):
 
     draw_label_box(
         draw,
-        60,
-        730,
-        1060,
-        84,
+        70,
+        782,
+        1180,
+        86,
         "观察提示",
         [
             "单棵树往往边界更碎、更容易跟着局部样本摆动；森林会把多棵树的结果综合起来，因此边界通常更稳。",
@@ -664,5 +626,5 @@ def render_rf_visual(context):
 
 
 def draw_footer_label(draw, plot, message):
-    footer_top = plot["top"] + plot["height"] + 76
-    draw_label_box(draw, plot["left"], footer_top, plot["width"], 76, "图像解读", [message])
+    footer_top = plot["top"] + plot["height"] + 88
+    draw_label_box(draw, plot["left"], footer_top, plot["width"], 80, "图像解读", [message])

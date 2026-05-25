@@ -39,9 +39,13 @@ def render_main_visual(algorithm_key, context):
     return render_forest_visual(context)
 
 
+def get_axis_labels(context):
+    return context.get("x_axis_label", "输入特征 x"), context.get("y_axis_label", "目标值 y")
+
+
 def render_diagnostic_visual(algorithm_key, context):
-    width = 1180
-    height = 520
+    width = 1280
+    height = 580
     image = Image.new("RGB", (width, height), (255, 255, 255))
     draw = ImageDraw.Draw(image)
     title_font = load_font(28, bold=True)
@@ -50,8 +54,8 @@ def render_diagnostic_visual(algorithm_key, context):
     draw.text((54, 22), "结果诊断", fill=TITLE_COLOR, font=title_font)
     draw.text((54, 60), "左侧看测试残差，右侧看预测值与真实值之间的关系。", fill=TEXT_COLOR, font=text_font)
 
-    left_plot = {"left": 60, "top": 150, "width": 500, "height": 300}
-    right_plot = {"left": 640, "top": 150, "width": 480, "height": 300}
+    left_plot = {"left": 70, "top": 158, "width": 540, "height": 330}
+    right_plot = {"left": 680, "top": 158, "width": 540, "height": 330}
     draw_plot_frame(draw, left_plot)
     draw_plot_frame(draw, right_plot)
     draw_plot_title(draw, left_plot, "测试残差图")
@@ -61,7 +65,16 @@ def render_diagnostic_visual(algorithm_key, context):
     residual_sorted = residual[context["x_test_sort_index"]]
     residual_min = min(residual_sorted.min(), -0.1) - 0.2
     residual_max = max(residual_sorted.max(), 0.1) + 0.2
-    draw_axes(draw, left_plot, x_test_sorted.min(), x_test_sorted.max(), residual_min, residual_max, "输入特征 x", "残差")
+    draw_axes(
+        draw,
+        left_plot,
+        x_test_sorted.min(),
+        x_test_sorted.max(),
+        residual_min,
+        residual_max,
+        context.get("x_axis_label", "输入特征 x"),
+        context.get("residual_axis_label", "残差"),
+    )
     zero_y = project_point(0.0, left_plot, residual_min, residual_max, axis="y")
     draw.line([(left_plot["left"], zero_y), (left_plot["left"] + left_plot["width"], zero_y)], fill=(155, 168, 182), width=2)
     for x_value, res_value in zip(x_test_sorted, residual_sorted):
@@ -81,6 +94,8 @@ def render_diagnostic_visual(algorithm_key, context):
             label_a="真实值",
             label_b="单树预测",
             label_c="森林预测",
+            x_axis_label=context.get("x_axis_label", "输入特征 x"),
+            y_axis_label=context.get("y_axis_label", "目标值 y"),
         )
     elif algorithm_key in ["ridge", "lasso"]:
         draw_plot_title(draw, right_plot, "真实值 vs 预测值")
@@ -96,6 +111,8 @@ def render_diagnostic_visual(algorithm_key, context):
             context["y_test_pred_sorted"],
             label_a="真实值",
             label_b="预测值",
+            x_axis_label=context.get("x_axis_label", "输入特征 x"),
+            y_axis_label=context.get("y_axis_label", "目标值 y"),
         )
 
     return image
@@ -107,7 +124,8 @@ def render_linear_visual(context):
         "散点表示样本，绿色直线是模型拟合结果，灰色虚线是真实趋势，红色线段表示残差。",
     )
     x_min, x_max, y_min, y_max = fit_bounds(context, margin_x=0.35, margin_y=0.45)
-    draw_axes(draw, plot, x_min, x_max, y_min, y_max, "输入特征 x", "目标值 y")
+    x_axis_label, y_axis_label = get_axis_labels(context)
+    draw_axes(draw, plot, x_min, x_max, y_min, y_max, x_axis_label, y_axis_label)
     draw_reference_curve(draw, plot, context["x_grid"], context["y_grid_true"], x_min, x_max, y_min, y_max)
     draw_fit_curve(draw, plot, context["x_grid"], context["y_grid_pred"], x_min, x_max, y_min, y_max)
     draw_regression_samples(draw, plot, context, x_min, x_max, y_min, y_max)
@@ -120,9 +138,14 @@ def render_linear_visual(context):
         118,
         "线性拟合观察点",
         [
-            "关注样本 x = {0:.2f}".format(context["focus_x"]),
-            "真实值 = {0:.2f}，预测值 = {1:.2f}".format(context["focus_true"], context["focus_pred"]),
-            "残差 = {0:+.2f}".format(context["focus_residual"]),
+            "关注样本 {0} = {1:.2f}".format(context.get("focus_x_label", "输入特征"), context["focus_x"]),
+            "{0} = {1:.2f}，{2} = {3:.2f}".format(
+                context.get("true_value_label", "真实值"),
+                context["focus_true"],
+                context.get("pred_value_label", "预测值"),
+                context["focus_pred"],
+            ),
+            "{0} = {1:+.2f}".format(context.get("residual_axis_label", "残差"), context["focus_residual"]),
         ],
     )
     draw_footer(draw, plot, "线性回归擅长抓住整体方向，但面对明显弯曲关系时，直线通常会显得过于简单。")
@@ -135,7 +158,8 @@ def render_polynomial_visual(context):
         "绿色曲线是当前阶数下的拟合结果，灰色虚线是真实趋势，用来观察欠拟合和过拟合。",
     )
     x_min, x_max, y_min, y_max = fit_bounds(context, margin_x=0.35, margin_y=0.55)
-    draw_axes(draw, plot, x_min, x_max, y_min, y_max, "输入特征 x", "目标值 y")
+    x_axis_label, y_axis_label = get_axis_labels(context)
+    draw_axes(draw, plot, x_min, x_max, y_min, y_max, x_axis_label, y_axis_label)
     draw_reference_curve(draw, plot, context["x_grid"], context["y_grid_true"], x_min, x_max, y_min, y_max)
     draw_fit_curve(draw, plot, context["x_grid"], context["y_grid_pred"], x_min, x_max, y_min, y_max)
     draw_regression_samples(draw, plot, context, x_min, x_max, y_min, y_max)
@@ -158,7 +182,7 @@ def render_polynomial_visual(context):
 
 
 def render_regularized_visual(algorithm_key, context):
-    image = Image.new("RGB", (1180, 820), (255, 255, 255))
+    image = Image.new("RGB", (1320, 930), (255, 255, 255))
     draw = ImageDraw.Draw(image)
     title_font = load_font(30, bold=True)
     text_font = load_font(18)
@@ -167,13 +191,14 @@ def render_regularized_visual(algorithm_key, context):
     draw.text((70, 24), context["visual_title"], fill=TITLE_COLOR, font=title_font)
     draw.text((70, 64), subtitle, fill=TEXT_COLOR, font=text_font)
 
-    plot = {"left": 80, "top": 142, "width": 700, "height": 470}
-    coeff_area = {"left": 835, "top": 160, "width": 285, "height": 392}
+    plot = {"left": 80, "top": 150, "width": 820, "height": 560}
+    coeff_area = {"left": 950, "top": 176, "width": 290, "height": 430}
     draw_plot_frame(draw, plot)
     draw_round_panel(draw, coeff_area)
 
     x_min, x_max, y_min, y_max = fit_bounds(context, margin_x=0.35, margin_y=0.55)
-    draw_axes(draw, plot, x_min, x_max, y_min, y_max, "输入特征 x", "目标值 y")
+    x_axis_label, y_axis_label = get_axis_labels(context)
+    draw_axes(draw, plot, x_min, x_max, y_min, y_max, x_axis_label, y_axis_label)
     draw_reference_curve(draw, plot, context["x_grid"], context["y_grid_true"], x_min, x_max, y_min, y_max)
     draw_fit_curve(draw, plot, context["x_grid"], context["y_grid_pred"], x_min, x_max, y_min, y_max)
     draw_regression_samples(draw, plot, context, x_min, x_max, y_min, y_max)
@@ -204,7 +229,8 @@ def render_svr_visual(context):
         "绿色曲线是 SVR 拟合结果，紫色带状区域是 epsilon 容忍带，被圈出的点是支持向量。",
     )
     x_min, x_max, y_min, y_max = fit_bounds(context, margin_x=0.35, margin_y=0.60)
-    draw_axes(draw, plot, x_min, x_max, y_min, y_max, "输入特征 x", "目标值 y")
+    x_axis_label, y_axis_label = get_axis_labels(context)
+    draw_axes(draw, plot, x_min, x_max, y_min, y_max, x_axis_label, y_axis_label)
     draw_reference_curve(draw, plot, context["x_grid"], context["y_grid_true"], x_min, x_max, y_min, y_max)
     draw_band(draw, plot, context["x_grid"], context["y_grid_pred"] - context["epsilon"], context["y_grid_pred"] + context["epsilon"], x_min, x_max, y_min, y_max)
     draw_fit_curve(draw, plot, context["x_grid"], context["y_grid_pred"], x_min, x_max, y_min, y_max)
@@ -237,7 +263,8 @@ def render_tree_visual(context):
         "绿色阶梯线是树模型预测，灰色虚线是真实趋势。台阶越细，通常说明树越复杂。",
     )
     x_min, x_max, y_min, y_max = fit_bounds(context, margin_x=0.35, margin_y=0.55)
-    draw_axes(draw, plot, x_min, x_max, y_min, y_max, "输入特征 x", "目标值 y")
+    x_axis_label, y_axis_label = get_axis_labels(context)
+    draw_axes(draw, plot, x_min, x_max, y_min, y_max, x_axis_label, y_axis_label)
     draw_reference_curve(draw, plot, context["x_grid"], context["y_grid_true"], x_min, x_max, y_min, y_max)
     draw_step_fit_curve(draw, plot, context["x_grid"], context["y_grid_pred"], x_min, x_max, y_min, y_max)
     draw_regression_samples(draw, plot, context, x_min, x_max, y_min, y_max)
@@ -259,8 +286,8 @@ def render_tree_visual(context):
 
 
 def render_forest_visual(context):
-    width = 1180
-    height = 810
+    width = 1320
+    height = 900
     image = Image.new("RGB", (width, height), (255, 255, 255))
     draw = ImageDraw.Draw(image)
     title_font = load_font(30, bold=True)
@@ -269,16 +296,17 @@ def render_forest_visual(context):
     draw.text((60, 24), context["visual_title"], fill=TITLE_COLOR, font=title_font)
     draw.text((60, 64), "左图是单棵树，右图是随机森林；它们使用同一批样本，但森林会通过平均变得更稳定。", fill=TEXT_COLOR, font=text_font)
 
-    left_plot = {"left": 60, "top": 158, "width": 480, "height": 410}
-    right_plot = {"left": 640, "top": 158, "width": 480, "height": 410}
+    left_plot = {"left": 70, "top": 168, "width": 540, "height": 470}
+    right_plot = {"left": 710, "top": 168, "width": 540, "height": 470}
     draw_plot_frame(draw, left_plot)
     draw_plot_frame(draw, right_plot)
     draw_plot_title(draw, left_plot, "单棵树回归")
     draw_plot_title(draw, right_plot, "随机森林平均结果")
 
     x_min, x_max, y_min, y_max = fit_bounds(context, margin_x=0.35, margin_y=0.55)
-    draw_axes(draw, left_plot, x_min, x_max, y_min, y_max, "输入特征 x", "目标值 y", tick_left=18, y_label_x=8)
-    draw_axes(draw, right_plot, x_min, x_max, y_min, y_max, "输入特征 x", "目标值 y", show_y_axis=False)
+    x_axis_label, y_axis_label = get_axis_labels(context)
+    draw_axes(draw, left_plot, x_min, x_max, y_min, y_max, x_axis_label, y_axis_label, tick_left=18, y_label_x=8)
+    draw_axes(draw, right_plot, x_min, x_max, y_min, y_max, x_axis_label, y_axis_label, show_y_axis=False)
 
     draw_reference_curve(draw, left_plot, context["x_grid"], context["y_grid_true"], x_min, x_max, y_min, y_max)
     draw_reference_curve(draw, right_plot, context["x_grid"], context["y_grid_true"], x_min, x_max, y_min, y_max)
@@ -289,10 +317,10 @@ def render_forest_visual(context):
 
     draw_focus_box(
         draw,
-        70,
-        618,
-        1040,
-        116,
+        80,
+        708,
+        1170,
+        108,
         "森林观察提示",
         [
             "单棵树测试 R² = {0:.3f}".format(context["single_tree_metrics"]["test_r2"]),
@@ -304,11 +332,11 @@ def render_forest_visual(context):
 
 
 def create_canvas(title, subtitle):
-    image = Image.new("RGB", (1180, 810), (255, 255, 255))
+    image = Image.new("RGB", (1320, 930), (255, 255, 255))
     draw = ImageDraw.Draw(image)
     title_font = load_font(30, bold=True)
     subtitle_font = load_font(18)
-    plot = {"left": 110, "top": 142, "width": 920, "height": 470}
+    plot = {"left": 96, "top": 150, "width": 1128, "height": 560}
     draw.text((plot["left"], 24), title, fill=TITLE_COLOR, font=title_font)
     draw.text((plot["left"], 64), subtitle, fill=TEXT_COLOR, font=subtitle_font)
     draw_plot_frame(draw, plot)
@@ -439,13 +467,25 @@ def draw_residual_guides(draw, plot, context, x_min, x_max, y_min, y_max, limit=
     draw.ellipse([px_focus - 9, py_focus - 9, px_focus + 9, py_focus + 9], outline=FOCUS_COLOR, width=3)
 
 
-def render_prediction_trace_panel(draw, plot, x_sorted, y_true_sorted, aux_sorted, y_pred_sorted, label_a, label_b, label_c=None):
+def render_prediction_trace_panel(
+    draw,
+    plot,
+    x_sorted,
+    y_true_sorted,
+    aux_sorted,
+    y_pred_sorted,
+    label_a,
+    label_b,
+    label_c=None,
+    x_axis_label="输入特征 x",
+    y_axis_label="目标值 y",
+):
     y_all = [y_true_sorted, y_pred_sorted]
     if aux_sorted is not None:
         y_all.append(aux_sorted)
     y_min = min(np.min(arr) for arr in y_all) - 0.35
     y_max = max(np.max(arr) for arr in y_all) + 0.35
-    draw_axes(draw, plot, x_sorted.min(), x_sorted.max(), y_min, y_max, "输入特征 x", "目标值 y", tick_left=plot["left"] - 42, y_label_x=plot["left"] - 52)
+    draw_axes(draw, plot, x_sorted.min(), x_sorted.max(), y_min, y_max, x_axis_label, y_axis_label, tick_left=plot["left"] - 42, y_label_x=plot["left"] - 52)
 
     true_points = [project_xy(x, y, plot, x_sorted.min(), x_sorted.max(), y_min, y_max) for x, y in zip(x_sorted, y_true_sorted)]
     pred_points = [project_xy(x, y, plot, x_sorted.min(), x_sorted.max(), y_min, y_max) for x, y in zip(x_sorted, y_pred_sorted)]
@@ -516,17 +556,23 @@ def draw_coefficient_bars(image, area, coef_pairs, highlight_sparse=False):
 
 
 def draw_focus_box(draw, x, y, width, height, title, lines):
-    draw.rounded_rectangle([x, y, x + width, y + height], radius=16, fill=(255, 255, 255), outline=PANEL_OUTLINE)
+    text_font = load_font(16)
+    wrapped_groups = [wrap_text(draw, line, text_font, width - 32) for line in lines]
+    text_line_count = sum(max(len(group), 1) for group in wrapped_groups)
+    box_height = max(height, 50 + text_line_count * 18 + 18 + max(len(lines) - 1, 0) * 4)
+    draw.rounded_rectangle([x, y, x + width, y + box_height], radius=16, fill=(255, 255, 255), outline=PANEL_OUTLINE)
     draw.text((x + 16, y + 12), title, fill=TITLE_COLOR, font=load_font(20, bold=True))
     current_y = y + 46
-    for line in lines:
-        draw_text_block(draw, x + 16, current_y, width - 32, 18, line)
-        current_y += 24
+    for wrapped in wrapped_groups:
+        for part in wrapped:
+            draw.text((x + 16, current_y), part, fill=TEXT_COLOR, font=text_font)
+            current_y += 18
+        current_y += 4
 
 
 def draw_footer(draw, plot, message):
-    footer_top = plot["top"] + plot["height"] + 54
-    draw_focus_box(draw, plot["left"], footer_top, plot["width"], 76, "图像解读", [message])
+    footer_top = plot["top"] + plot["height"] + 88
+    draw_focus_box(draw, plot["left"], footer_top, plot["width"], 82, "图像解读", [message])
 
 
 def draw_text_block(draw, x, y, width, line_height, text):

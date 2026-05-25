@@ -3,7 +3,9 @@
 包含 RNN 时间展开示意、隐藏状态数值演算，以及与 CNN 的差异对比。
 """
 
+import base64
 import os
+from io import BytesIO
 from typing import Optional
 
 import numpy as np
@@ -18,39 +20,34 @@ _FUTURE = (70, 70, 70)
 
 
 def _load_font(size: int):
-    """跨平台字体加载，优先使用 Linux / Streamlit Cloud 可用的中文字体"""
-    font_paths = [
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
-        "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
-        "C:/Windows/Fonts/msyh.ttc",
-        "C:/Windows/Fonts/simhei.ttf",
-        "C:/Windows/Fonts/simsun.ttc",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    candidates = [
+        "msyh.ttc",  # Microsoft YaHei (中文)
+        "msyhbd.ttc",
+        "simhei.ttf",
+        "simsun.ttc",
+        "arialuni.ttf",
+        "arial.ttf",
     ]
-    for path in font_paths:
-        if os.path.exists(path):
+    windows_font_dir = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts")
+    for name in candidates:
+        try:
+            return ImageFont.truetype(name, size)
+        except Exception:
+            font_path = os.path.join(windows_font_dir, name)
             try:
-                return ImageFont.truetype(path, size=size)
+                return ImageFont.truetype(font_path, size)
             except Exception:
                 continue
     return ImageFont.load_default()
 
 
 def _load_font_bold(size: int):
-    """标题加粗；失败时回退 `_load_font`，保证中文可读。"""
-    bold_paths = [
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
-        "C:/Windows/Fonts/msyhbd.ttc",
-    ]
-    for path in bold_paths:
-        if os.path.exists(path):
-            try:
-                return ImageFont.truetype(path, size=size)
-            except Exception:
-                continue
-    return _load_font(size)
+    """标题加粗（微软雅黑粗体）；失败时回退 `_load_font`，保证中文可读。"""
+    win = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts", "msyhbd.ttc")
+    try:
+        return ImageFont.truetype(win, size)
+    except Exception:
+        return _load_font(size)
 
 
 def _draw_arrow(draw: ImageDraw.ImageDraw, p0: tuple, p1: tuple, color=(150, 150, 150), width=2, head_len: Optional[int] = None):
@@ -141,18 +138,18 @@ def draw_rnn_unrolled(steps: int = 4, active_step: int = 1) -> Image.Image:
     steps = max(3, min(5, steps))
     active_step = max(1, min(steps, active_step))
 
-    col_gap = 120
-    margin = 30
-    w = margin * 2 + (steps - 1) * col_gap + 80
-    h = 260
+    col_gap = 200
+    margin = 50
+    w = margin * 2 + (steps - 1) * col_gap + 120
+    h = 420
     img = Image.new("RGB", (w, h), _BG)
     draw = ImageDraw.Draw(img)
-    font = _load_font(14)
-    small = _load_font(12)
+    font = _load_font(18)
+    small = _load_font(15)
 
-    y_x, y_h, y_y = 55, 130, 205
-    r = 18
-    x_base = margin + 20
+    y_x, y_h, y_y = 85, 210, 335
+    r = 28
+    x_base = margin + 30
 
     for t in range(1, steps + 1):
         cx = x_base + (t - 1) * col_gap
@@ -169,18 +166,18 @@ def draw_rnn_unrolled(steps: int = 4, active_step: int = 1) -> Image.Image:
         _draw_node(draw, cx, y_y, r, c_y, outline, f"y{t}", font)
 
         vertical_color = (165, 165, 165) if is_past_or_now else (90, 90, 90)
-        _draw_arrow(draw, (cx, y_x + r), (cx, y_h - r), color=vertical_color, width=2)
-        _draw_arrow(draw, (cx, y_h + r), (cx, y_y - r), color=vertical_color, width=2)
+        _draw_arrow(draw, (cx, y_x + r), (cx, y_h - r), color=vertical_color, width=3)
+        _draw_arrow(draw, (cx, y_h + r), (cx, y_y - r), color=vertical_color, width=3)
 
         if t < steps:
             nx = x_base + t * col_gap
             mem_color = (245, 158, 11) if t < active_step else (100, 100, 100)
-            _draw_arrow(draw, (cx + r, y_h), (nx - r, y_h), color=mem_color, width=4 if t < active_step else 2)
+            _draw_arrow(draw, (cx + r, y_h), (nx - r, y_h), color=mem_color, width=6 if t < active_step else 3)
 
-        draw.text((cx - 18, y_h - 45), f"t={t}", fill=(200, 200, 200), font=small)
+        draw.text((cx - 24, y_h - 70), f"t={t}", fill=(200, 200, 200), font=small)
 
-    draw.text((margin, 8), "RNN 时间展开：当前步高亮，未来步灰显", fill=_TEXT, font=font)
-    draw.text((margin, h - 24), "橙色横向箭头表示隐藏状态记忆传递：h(t-1) -> h(t)", fill=(245, 158, 11), font=small)
+    draw.text((margin, 12), "RNN 时间展开：当前步高亮，未来步灰显", fill=_TEXT, font=font)
+    draw.text((margin, h - 36), "橙色横向箭头表示隐藏状态记忆传递：h(t-1) -> h(t)", fill=(245, 158, 11), font=small)
     return img
 
 
@@ -188,15 +185,15 @@ def _draw_vector_bar(values: np.ndarray, base_color: tuple, title: str) -> Image
     """绘制一行向量热图小卡片。"""
     values = np.asarray(values, dtype=np.float32).reshape(-1)
     n = len(values)
-    cell = 52
-    margin = 14
-    title_h = 24
+    cell = 72
+    margin = 18
+    title_h = 30
     w = margin * 2 + n * cell
     h = margin * 2 + cell + title_h
     img = Image.new("RGB", (w, h), _BG)
     draw = ImageDraw.Draw(img)
-    font = _load_font(12)
-    num_font = _load_font(11)
+    font = _load_font(14)
+    num_font = _load_font(12)
 
     vmax = max(float(np.max(np.abs(values))), 1e-6)
     for i, v in enumerate(values):
@@ -277,19 +274,21 @@ def _render_step_with_nav(label: str, min_step: int, max_step: int, key: str, de
     nav_col1, nav_col2, nav_col3 = st.columns([1, 2.2, 1], gap="small")
     with nav_col1:
         if st.button("◀ 上一步", key=f"{key}_prev_btn", use_container_width=True, disabled=cur <= min_step):
-            st.session_state[state_key] = cur - 1
+            st.session_state[state_key] = max(min_step, cur - 1)
             st.session_state[slider_key] = st.session_state[state_key]
+            st.rerun()
     with nav_col3:
         if st.button("下一步 ▶", key=f"{key}_next_btn", use_container_width=True, disabled=cur >= max_step):
-            st.session_state[state_key] = cur + 1
+            st.session_state[state_key] = min(max_step, cur + 1)
             st.session_state[slider_key] = st.session_state[state_key]
+            st.rerun()
     with nav_col2:
         st.markdown(
             f"<div style='text-align:center;padding-top:6px;'>当前时间步：<b>{st.session_state[state_key]}</b> / {max_step}</div>",
             unsafe_allow_html=True,
         )
 
-    slider_val = st.slider(label, min_step, max_step, st.session_state[state_key], 1, key=slider_key)
+    slider_val = st.slider(label, min_step, max_step, step=1, key=slider_key)
     st.session_state[state_key] = int(slider_val)
     return st.session_state[state_key]
 
@@ -297,16 +296,16 @@ def _render_step_with_nav(label: str, min_step: int, max_step: int, key: str, de
 def _draw_matrix_heatmap(mat: np.ndarray, title: str, row_labels: list, col_labels: list) -> Image.Image:
     """绘制权重矩阵热图（行=输出维度，列=输入维度）。"""
     rows, cols = mat.shape
-    cell = 48
-    label_w, label_h = 38, 28
-    margin = 10
-    title_h = 22
+    cell = 64
+    label_w, label_h = 48, 34
+    margin = 14
+    title_h = 30
     w = margin * 2 + label_w + cols * cell
     h = margin * 2 + title_h + label_h + rows * cell
     img = Image.new("RGB", (w, h), _BG)
     draw = ImageDraw.Draw(img)
-    font = _load_font(11)
-    small = _load_font(10)
+    font = _load_font(13)
+    small = _load_font(12)
 
     draw.text((margin, margin), title, fill=_TEXT, font=font)
     vmax = max(float(np.max(np.abs(mat))), 1e-6)
@@ -343,31 +342,29 @@ def _draw_matrix_heatmap(mat: np.ndarray, title: str, row_labels: list, col_labe
 
 def _draw_calc_flow(x_t, h_prev, partial_x, partial_h, z_t, h_t) -> Image.Image:
     """绘制单时间步计算流程图：x_t + h_prev → 两路线性映射 → 相加得 z_t → tanh → h_t。"""
-    w, h = 780, 230
+    w, h = 980, 320
     img = Image.new("RGB", (w, h), _BG)
     draw = ImageDraw.Draw(img)
-    font = _load_font(13)
-    small = _load_font(11)
+    font = _load_font(15)
+    small = _load_font(13)
 
     stages = [
-        ("x_t\n输入", (78, 146, 255), 60),
-        ("Wxh*x_t", (245, 200, 60), 200),
-        ("z_t=sum", (200, 120, 255), 370),
-        ("tanh(z_t)", (255, 120, 80), 530),
-        ("h_t\n新记忆", (52, 199, 89), 680),
+        ("x_t\n输入", (78, 146, 255), 80),
+        ("Wxh*x_t", (245, 200, 60), 250),
+        ("z_t=sum", (200, 120, 255), 470),
+        ("tanh(z_t)", (255, 120, 80), 690),
+        ("h_t\n新记忆", (52, 199, 89), 900),
     ]
-    h_prev_x = 60
-    whh_x = 200
     cy = h // 2
 
-    node_r = 30
+    node_r = 38
 
     # 上方主链：x_t -> Wxh*x_t -> sum
     for i, (label, color, cx) in enumerate(stages):
         draw.ellipse([cx - node_r, cy - node_r, cx + node_r, cy + node_r],
                      fill=color, outline=(200, 200, 200), width=2)
         lines = label.split("\n")
-        line_h = 15
+        line_h = 18
         total = len(lines) * line_h
         for k, line in enumerate(lines):
             tb = draw.textbbox((0, 0), line, font=small)
@@ -375,18 +372,18 @@ def _draw_calc_flow(x_t, h_prev, partial_x, partial_h, z_t, h_t) -> Image.Image:
             draw.text((cx - tw // 2, cy - total // 2 + k * line_h), line, fill=(20, 20, 20), font=small)
         if i < len(stages) - 1:
             next_cx = stages[i + 1][2]
-            _draw_arrow(draw, (cx + node_r, cy), (next_cx - node_r, cy), color=(160, 160, 160), width=2)
+            _draw_arrow(draw, (cx + node_r, cy), (next_cx - node_r, cy), color=(160, 160, 160), width=3)
 
     # 下方 h_prev 通道
-    h_prev_cy = cy + 90
-    h_node_x = 60
-    w_hh_x = 200
+    h_prev_cy = cy + 115
+    h_node_x = 80
+    w_hh_x = 250
     draw.ellipse([h_node_x - node_r, h_prev_cy - node_r, h_node_x + node_r, h_prev_cy + node_r],
                  fill=(52, 199, 89), outline=(200, 200, 200), width=2)
     lb = "h(t-1)\n上一步"
     for k, line in enumerate(lb.split("\n")):
         tb = draw.textbbox((0, 0), line, font=small)
-        draw.text((h_node_x - (tb[2] - tb[0]) // 2, h_prev_cy - 12 + k * 15), line, fill=(20, 20, 20), font=small)
+        draw.text((h_node_x - (tb[2] - tb[0]) // 2, h_prev_cy - 15 + k * 18), line, fill=(20, 20, 20), font=small)
 
     draw.ellipse([w_hh_x - node_r, h_prev_cy - node_r, w_hh_x + node_r, h_prev_cy + node_r],
                  fill=(245, 200, 60), outline=(200, 200, 200), width=2)
@@ -394,7 +391,7 @@ def _draw_calc_flow(x_t, h_prev, partial_x, partial_h, z_t, h_t) -> Image.Image:
     tb = draw.textbbox((0, 0), wb, font=small)
     draw.text((w_hh_x - (tb[2] - tb[0]) // 2, h_prev_cy - (tb[3] - tb[1]) // 2), wb, fill=(20, 20, 20), font=small)
 
-    _draw_arrow(draw, (h_node_x + node_r, h_prev_cy), (w_hh_x - node_r, h_prev_cy), color=(160, 160, 160), width=2)
+    _draw_arrow(draw, (h_node_x + node_r, h_prev_cy), (w_hh_x - node_r, h_prev_cy), color=(160, 160, 160), width=3)
     # merge: Whh*h(t-1) 汇入 z_t
     sum_cx = stages[2][2]
     _draw_arrow(draw, (w_hh_x + node_r, h_prev_cy), (sum_cx, cy + node_r), color=(245, 158, 11), width=3)
@@ -403,11 +400,43 @@ def _draw_calc_flow(x_t, h_prev, partial_x, partial_h, z_t, h_t) -> Image.Image:
     def fmt_vec(v):
         return "  ".join(f"{x:+.2f}" for x in v)
 
-    draw.text((10, 10), f"x_t   : [{fmt_vec(x_t)}]", fill=(160, 200, 255), font=small)
-    draw.text((10, 26), f"h_prev: [{fmt_vec(h_prev)}]", fill=(100, 220, 140), font=small)
-    draw.text((10, 42), f"Wxh*x_t: [{fmt_vec(partial_x)}]   Whh*h_prev: [{fmt_vec(partial_h)}]", fill=(230, 210, 100), font=small)
-    draw.text((10, 58), f"z_t   : [{fmt_vec(z_t)}]   h_t: [{fmt_vec(h_t)}]", fill=(200, 160, 255), font=small)
+    draw.text((12, 12), f"x_t   : [{fmt_vec(x_t)}]", fill=(160, 200, 255), font=small)
+    draw.text((12, 30), f"h_prev: [{fmt_vec(h_prev)}]", fill=(100, 220, 140), font=small)
+    draw.text((12, 48), f"Wxh*x_t: [{fmt_vec(partial_x)}]   Whh*h_prev: [{fmt_vec(partial_h)}]", fill=(230, 210, 100), font=small)
+    draw.text((12, 66), f"z_t   : [{fmt_vec(z_t)}]   h_t: [{fmt_vec(h_t)}]", fill=(200, 160, 255), font=small)
     return img
+
+
+def _resize_keep_aspect(img: Image.Image, target_w: int) -> Image.Image:
+    """按目标宽度等比缩放。"""
+    if img.width <= 0 or img.width == target_w:
+        return img
+    ratio = target_w / float(img.width)
+    target_h = max(1, int(img.height * ratio))
+    return img.resize((target_w, target_h), Image.Resampling.LANCZOS)
+
+
+def _show_centered_golden_image(img: Image.Image, target_w: int):
+    """用黄金比例中栏居中显示图片。"""
+    left, middle, right = st.columns([0.5, 2.3, 0.5], gap="small")
+    with middle:
+        _show_centered_inline_image(img, target_w)
+
+
+def _show_centered_inline_image(img: Image.Image, target_w: int):
+    """在当前容器内以 HTML 方式水平居中显示图片。"""
+    resized = _resize_keep_aspect(img, target_w)
+    buf = BytesIO()
+    resized.save(buf, format="PNG")
+    b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+    st.markdown(
+        (
+            '<div style="text-align:center;">'
+            f'<img src="data:image/png;base64,{b64}" width="{resized.width}" />'
+            "</div>"
+        ),
+        unsafe_allow_html=True,
+    )
 
 
 def draw_cnn_vs_rnn() -> Image.Image:
@@ -626,10 +655,6 @@ def nv_render_rnn_viz():
     st.title("循环神经网络 (RNN)")
     st.caption("给神经网络装上短期记忆，让它能理解序列中的先后关系")
 
-    st.markdown(
-        '<a href="/" target="_self" style="text-decoration:none; font-size:14px; color:#1A7EC1;">🏠 返回首页</a>',
-        unsafe_allow_html=True)
-    st.markdown("---")
     st.subheader("为什么需要它？")
     st.info(
         "基础神经网络通常把样本视为独立输入，但文本、语音、时间序列的语义依赖前后文。"
@@ -637,8 +662,9 @@ def nv_render_rnn_viz():
     )
 
     st.subheader("核心机制：隐藏状态如何在时间中流动")
-    step = _render_step_with_nav("当前时间步（可拖动）", 1, 4, "rnn_step", 2)
-    st.image(draw_rnn_unrolled(steps=4, active_step=step), use_container_width=False)
+    step = _render_step_with_nav("序列时间步 t（1~4，可拖动）", 1, 4, "rnn_step", 1)
+    unrolled_img = draw_rnn_unrolled(steps=4, active_step=step)
+    _show_centered_golden_image(unrolled_img, target_w=int(unrolled_img.width * 0.9))
 
     st.latex(r"h_t = \tanh(W_{xh}x_t + W_{hh}h_{t-1})")
     st.markdown(
@@ -657,11 +683,12 @@ def nv_render_rnn_viz():
     st.divider()
     st.subheader("核心机制数值演算：看见记忆如何更新")
     st.markdown(
-        "每一个时间步的计算分为 **五个明确阶段**，下方通过拖动滑块选择时间步，逐步展示数字如何流动。"
+        "本示例的序列共有 **4 个时间步（t=1~4）**；你在下方选择一个时间步后，"
+        "会看到该时间步内部的 **5 个计算阶段**，逐步展示数字如何流动。"
     )
 
     x_seq, h_states, z_states, w_xh, w_hh = _run_toy_rnn_sequence()
-    calc_step = _render_step_with_nav("演算时间步 t（可拖动）", 1, 4, "rnn_calc_step", 1)
+    calc_step = _render_step_with_nav("选择时间步 t（1~4）查看该步的 5 阶段演算", 1, 4, "rnn_calc_step", 1)
 
     x_t    = x_seq[calc_step - 1]
     h_prev = h_states[calc_step - 1]
@@ -671,57 +698,55 @@ def nv_render_rnn_viz():
     partial_h = w_hh @ h_prev
 
     # ---- 总览流程图 ----
-    st.image(_draw_calc_flow(x_t, h_prev, partial_x, partial_h, z_t, h_t), use_container_width=False)
+    _show_centered_golden_image(_draw_calc_flow(x_t, h_prev, partial_x, partial_h, z_t, h_t), target_w=1200)
 
     # ---- 五步详解 ----
+    st.caption("说明：下面“第一步~第五步”是单个已选时间步 t 的内部计算流程，不是序列长度。")
     st.markdown("#### 第一步：读入本步输入 $x_t$ 与上一步隐藏状态 $h_{t-1}$")
     col_a, col_b = st.columns(2)
     with col_a:
-        st.image(_draw_vector_bar(x_t, (78, 146, 255), f"x_t  (t={calc_step}, 维度=2)"), use_container_width=False)
+        _show_centered_inline_image(_draw_vector_bar(x_t, (78, 146, 255), f"x_t  (t={calc_step}, 维度=2)"), 340)
         st.caption("当前时刻的输入向量，来自外部（如词向量、传感器读数）。")
     with col_b:
-        st.image(_draw_vector_bar(h_prev, (52, 199, 89), f"h_(t-1)  (t={calc_step - 1}, 维度=3)"), use_container_width=False)
+        _show_centered_inline_image(_draw_vector_bar(h_prev, (52, 199, 89), f"h_(t-1)  (t={calc_step - 1}, 维度=3)"), 340)
         st.caption("上一时刻保存下来的「记忆」，初始为全零；之后每步都被更新。")
 
     st.markdown("#### 第二步：两路线性映射——各自乘以权重矩阵")
-    st.latex(
-        r"\text{贡献}_x = W_{xh} \cdot x_t, \quad"
-        r"W_{xh} \in \mathbb{R}^{3\times 2}"
-    )
-    st.latex(
-        r"\text{贡献}_h = W_{hh} \cdot h_{t-1}, \quad"
-        r"W_{hh} \in \mathbb{R}^{3\times 3}"
-    )
+    col_fx, col_fh = st.columns(2)
+    with col_fx:
+        st.latex(r"\text{贡献}_x = W_{xh} \cdot x_t,\;\; W_{xh} \in \mathbb{R}^{3\times 2}")
+    with col_fh:
+        st.latex(r"\text{贡献}_h = W_{hh} \cdot h_{t-1},\;\; W_{hh} \in \mathbb{R}^{3\times 3}")
     col_w1, col_w2 = st.columns(2)
     with col_w1:
-        st.image(
+        _show_centered_inline_image(
             _draw_matrix_heatmap(
                 w_xh,
                 "Wxh（3×2）——输入权重",
                 [f"h[{i+1}]" for i in range(3)],
                 [f"x[{j+1}]" for j in range(2)],
             ),
-            use_container_width=False,
+            380,
         )
     with col_w2:
-        st.image(
+        _show_centered_inline_image(
             _draw_matrix_heatmap(
                 w_hh,
                 "Whh（3×3）——记忆权重",
                 [f"h[{i+1}]" for i in range(3)],
                 [f"hp[{j+1}]" for j in range(3)],
             ),
-            use_container_width=False,
+            380,
         )
     col_px, col_ph = st.columns(2)
     with col_px:
-        st.image(_draw_vector_bar(partial_x, (220, 170, 60), "Wxh*x_t（输入贡献）"), use_container_width=False)
+        _show_centered_inline_image(_draw_vector_bar(partial_x, (220, 170, 60), "Wxh*x_t（输入贡献）"), 380)
     with col_ph:
-        st.image(_draw_vector_bar(partial_h, (180, 100, 240), "Whh*h(t-1)（记忆贡献）"), use_container_width=False)
+        _show_centered_inline_image(_draw_vector_bar(partial_h, (180, 100, 240), "Whh*h(t-1)（记忆贡献）"), 380)
 
     st.markdown("#### 第三步：两路贡献相加，得到线性预激活 $z_t$")
     st.latex(r"z_t = W_{xh} x_t + W_{hh} h_{t-1}")
-    st.image(_draw_vector_bar(z_t, (200, 120, 255), f"z_t（线性预激活，t={calc_step}）"), use_container_width=False)
+    _show_centered_golden_image(_draw_vector_bar(z_t, (200, 120, 255), f"z_t（线性预激活，t={calc_step}）"), target_w=520)
 
     st.markdown("#### 第四步：tanh 激活——把 $z_t$ 压缩到 $(-1, 1)$")
     st.latex(r"h_t = \tanh(z_t)")
@@ -729,7 +754,7 @@ def nv_render_rnn_viz():
         "tanh 会把任意大的正/负数非线性地压缩到 $(-1,\\ 1)$ 区间内，"
         "防止状态值爆炸，同时引入非线性表达能力。"
     )
-    st.image(_draw_vector_bar(h_t, (40, 220, 120), f"h_t（新隐藏状态，t={calc_step}）"), use_container_width=False)
+    _show_centered_golden_image(_draw_vector_bar(h_t, (40, 220, 120), f"h_t（新隐藏状态，t={calc_step}）"), target_w=520)
 
     st.markdown("#### 第五步：$h_t$ 同时用于两件事——输出预测 & 传给下一步")
     st.latex(r"y_t = W_{hy} h_t \quad (\text{输出预测})")

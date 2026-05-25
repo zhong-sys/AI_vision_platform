@@ -34,7 +34,7 @@ def render_main_visual(algorithm_key, context):
 
 
 def render_analysis_visual(algorithm_key, context):
-    image = Image.new("RGB", (1180, 520), (255, 255, 255))
+    image = Image.new("RGB", (1280, 580), (255, 255, 255))
     draw = ImageDraw.Draw(image)
     title_font = load_font(28, bold=True)
     text_font = load_font(17)
@@ -42,8 +42,8 @@ def render_analysis_visual(algorithm_key, context):
     draw.text((54, 22), "结构分析", fill=TITLE_COLOR, font=title_font)
     draw.text((54, 60), "左侧看当前簇规模，右侧看该算法最值得观察的结构信息。", fill=TEXT_COLOR, font=text_font)
 
-    left_plot = {"left": 60, "top": 150, "width": 400, "height": 300}
-    right_plot = {"left": 540, "top": 150, "width": 580, "height": 300}
+    left_plot = {"left": 70, "top": 158, "width": 440, "height": 330}
+    right_plot = {"left": 590, "top": 158, "width": 620, "height": 330}
     draw_panel(draw, left_plot)
     draw_panel(draw, right_plot)
     draw_plot_title(draw, left_plot, "簇规模分布")
@@ -122,12 +122,12 @@ def render_dbscan_visual(context):
         plot["left"] + 16,
         plot["top"] + 16,
         340,
-        118,
+        138,
         "DBSCAN 邻域解释",
         [
             "当前高亮点位于红圈中心，用来演示 eps 邻域。",
-            "eps 邻域内样本数 = {0}".format(len(context["focus_neighbors"])),
-            "min_samples = {0}".format(context["min_samples"]),
+            "邻域样本数 = {0}".format(len(context["focus_neighbors"])),
+            "最少样本数 = {0}".format(context["min_samples"]),
             "噪声点数量 = {0}".format(context["noise_count"]),
         ],
     )
@@ -136,7 +136,7 @@ def render_dbscan_visual(context):
 
 
 def render_agglomerative_visual(context):
-    image = Image.new("RGB", (1180, 820), (255, 255, 255))
+    image = Image.new("RGB", (1320, 920), (255, 255, 255))
     draw = ImageDraw.Draw(image)
     title_font = load_font(30, bold=True)
     subtitle_font = load_font(18)
@@ -144,8 +144,8 @@ def render_agglomerative_visual(context):
     draw.text((60, 24), context["visual_title"], fill=TITLE_COLOR, font=title_font)
     draw.text((60, 64), "左侧看当前截断后的簇，右侧看树状图，帮助学生理解“先细后粗”的层次合并过程。", fill=TEXT_COLOR, font=subtitle_font)
 
-    left_plot = {"left": 60, "top": 154, "width": 470, "height": 400}
-    right_plot = {"left": 620, "top": 154, "width": 500, "height": 400}
+    left_plot = {"left": 70, "top": 162, "width": 520, "height": 450}
+    right_plot = {"left": 680, "top": 162, "width": 560, "height": 450}
     draw_panel(draw, left_plot)
     draw_panel(draw, right_plot)
     draw_plot_title(draw, left_plot, "当前截断后的聚类结果")
@@ -158,14 +158,14 @@ def render_agglomerative_visual(context):
 
     draw_focus_box(
         draw,
-        60,
-        598,
-        1060,
+        70,
+        708,
+        1170,
         110,
         "层次聚类观察点",
         [
             "当前簇数 = {0}".format(context["cluster_count"]),
-            "linkage = {0}".format(context["linkage"]),
+            "合并方式 = {0}".format(format_linkage_label(context["linkage"])),
             "切断高度 = {0}".format("--" if context["cut_distance"] is None else "{0:.2f}".format(context["cut_distance"])),
         ],
     )
@@ -206,9 +206,9 @@ def render_gmm_visual(context):
 
 
 def create_canvas(title, subtitle):
-    image = Image.new("RGB", (1180, 810), (255, 255, 255))
+    image = Image.new("RGB", (1320, 930), (255, 255, 255))
     draw = ImageDraw.Draw(image)
-    plot = {"left": 120, "top": 142, "width": 920, "height": 470}
+    plot = {"left": 100, "top": 150, "width": 1120, "height": 560}
     draw.text((plot["left"], 24), title, fill=TITLE_COLOR, font=load_font(30, bold=True))
     draw.text((plot["left"], 64), subtitle, fill=TEXT_COLOR, font=load_font(18))
     draw_panel(draw, plot)
@@ -485,16 +485,22 @@ def draw_axes(draw, plot, x_min, x_max, y_min, y_max, x_label, y_label, show_y_a
 
 
 def draw_focus_box(draw, x, y, width, height, title, lines):
-    draw.rounded_rectangle([x, y, x + width, y + height], radius=16, fill=(255, 255, 255), outline=OUTLINE_COLOR)
+    text_font = load_font(16)
+    wrapped_groups = [wrap_text(draw, line, text_font, width - 32) for line in lines]
+    text_line_count = sum(max(len(group), 1) for group in wrapped_groups)
+    box_height = max(height, 50 + text_line_count * 18 + 18 + max(len(lines) - 1, 0) * 4)
+    draw.rounded_rectangle([x, y, x + width, y + box_height], radius=16, fill=(255, 255, 255), outline=OUTLINE_COLOR)
     draw.text((x + 16, y + 12), title, fill=TITLE_COLOR, font=load_font(20, bold=True))
     current_y = y + 46
-    for line in lines:
-        draw_text_block(draw, x + 16, current_y, width - 32, 18, line)
-        current_y += 22
+    for wrapped in wrapped_groups:
+        for part in wrapped:
+            draw.text((x + 16, current_y), part, fill=TEXT_COLOR, font=text_font)
+            current_y += 18
+        current_y += 4
 
 
 def draw_footer(draw, plot, message):
-    draw_focus_box(draw, plot["left"], plot["top"] + plot["height"] + 54, plot["width"], 76, "图像解读", [message])
+    draw_focus_box(draw, plot["left"], plot["top"] + plot["height"] + 88, plot["width"], 82, "图像解读", [message])
 
 
 def draw_panel(draw, plot):
@@ -528,6 +534,16 @@ def cluster_color(label):
     if label < 0:
         return NOISE_COLOR
     return hex_to_rgb(CLUSTER_HEX[label % len(CLUSTER_HEX)])
+
+
+def format_linkage_label(value):
+    mapping = {
+        "single": "最近距离",
+        "complete": "最远距离",
+        "average": "平均距离",
+        "ward": "方差最小化",
+    }
+    return mapping.get(value, value)
 
 
 def lighten_color(color, ratio):
