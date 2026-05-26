@@ -155,9 +155,11 @@ def show(model_preselected: str = None):
         with col1:
             model_choice = st.selectbox("选择模型", model_list, index=default_index)
         with col2:
-            temperature = st.slider("Temperature", 0.0, 1.0, 0.7, 0.1)
+            temperature = st.slider("Temperature", 0.0, 1.0, 0.7, 0.1,
+                help="控制生成文本的**随机性**。值越低（接近 0），输出越确定、保守；值越高（接近 1），输出越有创造性和多样性。")
         with col3:
-            max_tokens = st.slider("Max Tokens", 50, 2000, 1024, 50)
+            max_tokens = st.slider("Max Tokens", 50, 2000, 1024, 50,
+                help="限制模型**单次回复的最大长度**。1 个 token 约等于 0.5~1 个中文字符或 0.75 个英文单词。值越大，回复可以越长。")
         with col4:
             st.write("")  # 对齐占位
             st.write("")
