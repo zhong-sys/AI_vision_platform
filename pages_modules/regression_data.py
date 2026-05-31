@@ -15,7 +15,7 @@ ALGORITHM_DATASET_OPTIONS = {
 DATASET_META = {
     "linear_trend": {
         "label": "线性趋势噪声数据",
-        "summary": "整体趋势接近一条直线，适合观察线性回归如何在噪声中找到平均变化方向。",
+        "summary": "整体趋势接近一条直线，适合观察如何在噪声中找到平均变化方向。",
     },
     "linear_outliers": {
         "label": "含异常点的线性数据",

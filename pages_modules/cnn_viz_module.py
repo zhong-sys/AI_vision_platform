@@ -39,20 +39,14 @@ _CONV_DISPLAY_WIDTH = 300
 def _load_font(size: int):
     """跨平台字体加载，优先 Linux（Noto/WQY），回退 Windows。"""
     font_paths = [
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
-        "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
-        "C:/Windows/Fonts/msyh.ttc",
-        "C:/Windows/Fonts/simhei.ttf",
-        "C:/Windows/Fonts/simsun.ttc",
+        "assets/LXGWWenKai-Regular.ttf",
     ]
     for path in font_paths:
         try:
             return ImageFont.truetype(path, size=size)
         except Exception:
             continue
-    for name in ["msyh.ttc", "simhei.ttf", "arial.ttf"]:
+    for name in ["assets/LXGWWenKai-Regular.ttf"]:
         try:
             return ImageFont.truetype(name, size)
         except Exception:

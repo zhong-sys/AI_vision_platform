@@ -22,13 +22,7 @@ _FUTURE = (70, 70, 70)
 def _load_font(size: int):
     """跨平台字体加载，优先 Linux（Noto/WQY），回退 Windows。"""
     font_paths = [
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",   # Linux / Streamlit Cloud
-        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
-        "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
-        "C:/Windows/Fonts/msyh.ttc",                               # Windows
-        "C:/Windows/Fonts/simhei.ttf",
-        "C:/Windows/Fonts/simsun.ttc",
+        "assets/LXGWWenKai-Regular.ttf",
     ]
     for path in font_paths:
         try:
@@ -36,7 +30,7 @@ def _load_font(size: int):
         except Exception:
             continue
     # 最后的回退：尝试裸文件名
-    for name in ["msyh.ttc", "simhei.ttf", "arial.ttf"]:
+    for name in ["assets/LXGWWenKai-Regular.ttf"]:
         try:
             return ImageFont.truetype(name, size)
         except Exception:
@@ -47,8 +41,7 @@ def _load_font(size: int):
 def _load_font_bold(size: int):
     """标题加粗；优先 Linux Noto Bold / Windows msyhbd，回退普通字体。"""
     bold_paths = [
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
-        "C:/Windows/Fonts/msyhbd.ttc",
+        "assets/LXGWWenKai-Regular.ttf"
     ]
     for path in bold_paths:
         try:

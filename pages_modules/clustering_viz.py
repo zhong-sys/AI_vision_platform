@@ -16,10 +16,7 @@ FOCUS_COLOR = (231, 76, 60)
 
 
 FONT_PATHS = [
-    "C:/Windows/Fonts/msyh.ttc",
-    "C:/Windows/Fonts/msyhbd.ttc",
-    "C:/Windows/Fonts/simhei.ttf",
-    "C:/Windows/Fonts/simsun.ttc",
+    "assets/LXGWWenKai-Regular.ttf",
 ]
 
 
@@ -595,19 +592,12 @@ def load_font(size, bold=False):
     """跨平台字体加载，优先使用 Linux / Streamlit Cloud 可用的中文字体"""
     # 候选字体路径（按优先级排序）
     font_paths = [
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",   # Streamlit Cloud
-        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
-        "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
-        "C:/Windows/Fonts/msyh.ttc",                               # Windows
-        "C:/Windows/Fonts/simhei.ttf",
-        "C:/Windows/Fonts/simsun.ttc",
+        "assets/LXGWWenKai-Regular.ttf",
     ]
     if bold:
         # 粗体优先
         bold_paths = [
-            "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
-            "C:/Windows/Fonts/msyhbd.ttc",
+            "assets/LXGWWenKai-Regular.ttf"
         ]
         font_paths = bold_paths + font_paths
 

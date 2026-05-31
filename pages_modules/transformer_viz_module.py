@@ -18,13 +18,7 @@ _EDGE = (88, 103, 125)
 def _load_font(size: int):
     """跨平台字体加载，优先使用 Linux / Streamlit Cloud 可用的中文字体"""
     font_paths = [
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
-        "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
-        "C:/Windows/Fonts/msyh.ttc",
-        "C:/Windows/Fonts/simhei.ttf",
-        "C:/Windows/Fonts/simsun.ttc",
+        "assets/LXGWWenKai-Regular.ttf",
     ]
     for path in font_paths:
         if os.path.exists(path):
