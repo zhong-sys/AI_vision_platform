@@ -1,6 +1,6 @@
 {
   "knowledge_base": "ai_algorithm_visualization_platform",
-  "display_name": "河海大学 AI 算法可视化学习平台知识库",
+  "display_name": "智视AI 算法可视化学习平台知识库",
   "version": "1.0",
   "description": "统一管理神经网络、CNN、RNN、Transformer 四模块的提示词、预期输出与参数配置。",
   "modules": {
