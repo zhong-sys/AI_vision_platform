@@ -33,7 +33,7 @@ def main():
     url = f"http://{host}:{port}"
 
     print("=" * 56)
-    print("       河海大学 - AI算法可视化学习平台")
+    print("       智视AI · 算法可视化学习平台")
     print("=" * 56)
     print("\n正在启动服务，请稍候...")
     print(f"服务地址: {url}")

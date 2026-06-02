@@ -1,8 +1,8 @@
 import streamlit as st
 
-HHU_BLUE = "#1A7EC1"
-HHU_BLUE_LIGHT = "#3A9BDC"
-HHU_BLUE_DARK = "#0F5B9E"
+PRIMARY_BLUE = "#1A7EC1"
+PRIMARY_BLUE_LIGHT = "#3A9BDC"
+PRIMARY_BLUE_DARK = "#0F5B9E"
 ACCENT_ORANGE = "#F39C12"
 
 def get_api_key(provider: str) -> str:
@@ -23,9 +23,9 @@ GLOBAL_CSS = """
 <style>
     /* 主色调 */
     :root {
-        --hhu-blue: #1A7EC1;
-        --hhu-blue-light: #3A9BDC;
-        --hhu-blue-dark: #0F5B9E;
+        --primary-blue: #1A7EC1;
+        --primary-blue-light: #3A9BDC;
+        --primary-blue-dark: #0F5B9E;
         --accent-orange: #F39C12;
     }
 
@@ -122,6 +122,13 @@ GLOBAL_CSS = """
     .top-gradient {
         height: 2px;
         background: linear-gradient(90deg, #1A7EC1, #3A9BDC, #1A7EC1);
+    }
+    /* 侧栏 Logo 透明背景 */
+    [data-testid="stSidebar"] [data-testid="stImage"] {
+        background: transparent !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stImage"] img {
+        background: transparent !important;
     }
 </style>
 """

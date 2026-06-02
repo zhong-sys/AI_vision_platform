@@ -1,6 +1,6 @@
 {
   "knowledge_base": "ai_algorithm_visualization_platform",
-  "display_name": "河海大学 AI 算法可视化学习平台知识库",
+  "display_name": "智视AI 算法可视化学习平台知识库",
   "version": "1.0",
   "description": "统一管理 DeepSeek、智谱GLM、通义千问、文心一言四款国产大模型的提示词、预期输出与参数配置。",
   "modules": {
@@ -302,7 +302,7 @@
       "back_to_home_button": "🏠 返回首页",
       "divider_style": "solid",
       "css": {
-        "primary_color_var": "--hhu-blue: #1A7EC1",
+        "primary_color_var": "--primary-blue: #1A7EC1",
         "font_family": "Microsoft YaHei, PingFang SC, SimHei, sans-serif"
       }
     }

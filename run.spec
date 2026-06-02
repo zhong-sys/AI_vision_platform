@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('main.py', '.'), ('hhu_logo.png', '.')]
+datas = [('main.py', '.'), ('logo.png', '.')]
 binaries = []
 hiddenimports = []
 tmp_ret = collect_all('streamlit')

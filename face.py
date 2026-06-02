@@ -12,20 +12,20 @@ def resource_path(relative_path):
 
 # ==================== 页面配置 ====================
 st.set_page_config(
-    page_title="河海大学 · AI算法可视化学习平台",
+    page_title="智视AI · 算法可视化学习平台",
     page_icon="🧠",
     layout="wide",
     menu_items={}  # 隐藏右上角调试菜单
 )
 
-# ==================== 自定义CSS样式（河海官网清新版） ====================
+# ==================== 自定义CSS样式 ====================
 st.markdown("""
 <style>
-    /* 主色调：河海官网清新蓝 */
+    /* 主色调 */
     :root {
-        --hhu-blue: #1A7EC1;        /* 主蓝 */
-        --hhu-blue-light: #3A9BDC;   /* 浅蓝 */
-        --hhu-blue-dark: #0F5B9E;    /* 深蓝 */
+        --primary-blue: #1A7EC1;        /* 主蓝 */
+        --primary-blue-light: #3A9BDC;   /* 浅蓝 */
+        --primary-blue-dark: #0F5B9E;    /* 深蓝 */
         --accent-orange: #F39C12;    /* 点缀橙 */
         --text-dark: #222222;
         --text-gray: #555555;
@@ -38,14 +38,14 @@ st.markdown("""
         align-items: center;
         gap: 20px;
         padding: 15px 0;
-        border-bottom: 2px solid var(--hhu-blue-light);
+        border-bottom: 2px solid var(--primary-blue-light);
         margin-bottom: 20px;
     }
     .school-name {
         font-family: "Microsoft YaHei", "SimHei", sans-serif;
         font-size: 32px;
         font-weight: 700;
-        color: var(--hhu-blue-dark);
+        color: var(--primary-blue-dark);
         letter-spacing: 6px;
     }
     .platform-title {
@@ -59,14 +59,14 @@ st.markdown("""
     .sidebar-header {
         font-size: 16px;
         font-weight: 600;
-        color: var(--hhu-blue-dark);
+        color: var(--primary-blue-dark);
         margin: 20px 0 12px 0;
         padding-bottom: 6px;
-        border-bottom: 2px solid var(--hhu-blue-light);
+        border-bottom: 2px solid var(--primary-blue-light);
         letter-spacing: 0.5px;
     }
     .motto-bar {
-        background: linear-gradient(135deg, var(--hhu-blue-dark) 0%, var(--hhu-blue) 100%);
+        background: linear-gradient(135deg, var(--primary-blue-dark) 0%, var(--primary-blue) 100%);
         color: white;
         padding: 14px 20px;
         border-radius: 12px;
@@ -86,7 +86,7 @@ st.markdown("""
     }
     .welcome-title {
         font-size: 28px;
-        color: var(--hhu-blue-dark);
+        color: var(--primary-blue-dark);
         margin-bottom: 12px;
         font-weight: 600;
     }
@@ -100,7 +100,7 @@ st.markdown("""
     }
     .guide-card:hover {
         box-shadow: 0 8px 20px rgba(26, 126, 193, 0.08);
-        border-color: var(--hhu-blue-light);
+        border-color: var(--primary-blue-light);
         transform: translateY(-2px);
     }
     .preview-card {
@@ -114,7 +114,7 @@ st.markdown("""
     }
     .preview-card:hover {
         box-shadow: 0 8px 20px rgba(26, 126, 193, 0.08);
-        border-color: var(--hhu-blue-light);
+        border-color: var(--primary-blue-light);
     }
     .accent-tag {
         display: inline-block;
@@ -130,7 +130,7 @@ st.markdown("""
         background: var(--bg-light);
         border-radius: 30px;
         padding: 8px 24px;
-        color: var(--hhu-blue-dark);
+        color: var(--primary-blue-dark);
         font-size: 14px;
         border: 1px solid #E2E8F0;
         display: inline-block;
@@ -155,13 +155,13 @@ with col1:
         unsafe_allow_html=True)
 with col2:
     st.markdown(
-        '<div style="display: flex; align-items: baseline;"><span class="school-name">河海大学</span><span class="platform-title">AI算法可视化学习平台</span></div>',
+        '<div style="display: flex; align-items: baseline;"><span class="school-name">智视<span style="font-size:1.15em; vertical-align:-0.05em">AI</span></span><span class="platform-title">算法可视化学习平台</span></div>',
         unsafe_allow_html=True)
 with col3:
     st.markdown(
-        '<div style="text-align: right; padding-top: 10px;"><span style="color: var(--hhu-blue); font-weight: 500;">💧 水之子 · 智未来</span></div>',
+        '<div style="text-align: right; padding-top: 10px;"><span style="color: var(--primary-blue); font-weight: 500;">智见未来 · 学无止境</span></div>',
         unsafe_allow_html=True)
-st.markdown('<div style="height: 2px; background: linear-gradient(90deg, var(--hhu-blue), var(--hhu-blue-light), var(--hhu-blue));"></div>',
+st.markdown('<div style="height: 2px; background: linear-gradient(90deg, var(--primary-blue), var(--primary-blue-light), var(--primary-blue));"></div>',
             unsafe_allow_html=True)
 
 # ==================== 左侧导航栏 ====================
@@ -170,10 +170,10 @@ with st.sidebar:
     # 校徽图片与校名（使用 st.image + 列居中，绝对对齐）
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
-        logo_path = resource_path("assets/hhu_logo.png")
-        st.image(logo_path, width=200)
+        logo_path = resource_path("assets/logo.png")
+        st.image(logo_path, width=240)
     st.markdown(
-        '<p style="color: #1A7EC1; font-weight: bold; text-align: center; margin-top: 5px; margin-bottom: 0px;">Hohai University</p>',
+        '<p style="color: #1A7EC1; font-weight: bold; text-align: center; margin-top: 5px; margin-bottom: 0px;">智视<span style="font-size:1.15em; margin-left: 3px;">AI</span></p>',
         unsafe_allow_html=True)
     st.markdown("---")
 
@@ -208,21 +208,20 @@ with st.sidebar:
         key="llm_radio"
     )
 
-    # 校训展示
+    # 平台理念展示
     st.markdown("---")
     st.markdown("""
     <div class="motto-bar">
-        <div style="font-weight: bold; margin-bottom: 5px;">校训</div>
-        <div>艰苦朴素 · 实事求是</div>
-        <div>严格要求 · 勇于探索</div>
+        <div style="font-weight: bold; margin-bottom: 5px;">理念</div>
+        <div>智见未来 · 视界无限</div>
+        <div>知行合一 · 学无止境</div>
     </div>
     """, unsafe_allow_html=True)
 
     # 底部信息
     st.markdown("""
     <div style="margin-top: 30px; text-align: center; color: #999; font-size: 12px;">
-        ©  河海大学<br>
-        信息科学与工程学院
+        © 2026 智视AI · 算法可视化学习平台
     </div>
     """, unsafe_allow_html=True)
 
@@ -232,7 +231,7 @@ with st.sidebar:
 st.markdown("""
 <div class="welcome-box">
     <div style="font-size: 36px; margin-bottom: 10px; color: #1A7EC1;">🧠</div>
-    <div class="welcome-title">欢迎使用 AI 算法可视化学习平台</div>
+    <div class="welcome-title">欢迎使用算法可视化学习平台</div>
     <p style="font-size: 16px; color: #555; max-width: 600px; margin: 15px auto 0 auto;">
         通过拖拽组件、调整参数、观察实时变化，<br>
         直观理解人工智能算法的原理与工作机制。
@@ -251,7 +250,7 @@ with guide_col1:
     st.markdown("""
     <div class="guide-card">
         <div style="font-size: 32px; margin-bottom: 10px;">1️⃣</div>
-        <h4 style="color: var(--hhu-blue-dark); margin-bottom: 8px;">选择算法模块</h4>
+        <h4 style="color: var(--primary-blue-dark); margin-bottom: 8px;">选择算法模块</h4>
         <p style="color: #666; font-size: 14px;">从左侧菜单点击感兴趣的算法类别，如“分类”或“神经网络”。</p>
     </div>
     """, unsafe_allow_html=True)
@@ -260,7 +259,7 @@ with guide_col2:
     st.markdown("""
     <div class="guide-card">
         <div style="font-size: 32px; margin-bottom: 10px;">2️⃣</div>
-        <h4 style="color: var(--hhu-blue-dark); margin-bottom: 8px;">调节参数观察变化</h4>
+        <h4 style="color: var(--primary-blue-dark); margin-bottom: 8px;">调节参数观察变化</h4>
         <p style="color: #666; font-size: 14px;">使用滑块、下拉框调整模型参数，图表和结果会实时更新。</p>
     </div>
     """, unsafe_allow_html=True)
@@ -269,7 +268,7 @@ with guide_col3:
     st.markdown("""
     <div class="guide-card">
         <div style="font-size: 32px; margin-bottom: 10px;">3️⃣</div>
-        <h4 style="color: var(--hhu-blue-dark); margin-bottom: 8px;">理解算法原理</h4>
+        <h4 style="color: var(--primary-blue-dark); margin-bottom: 8px;">理解算法原理</h4>
         <p style="color: #666; font-size: 14px;">每个模块都配有通俗易懂的原理说明，边操作边学习。</p>
     </div>
     """, unsafe_allow_html=True)
@@ -284,7 +283,7 @@ with col_a:
     st.markdown("""
     <div class="preview-card">
         <div style="font-size: 40px; margin-bottom: 12px;">📁</div>
-        <h4 style="color: var(--hhu-blue-dark); margin-bottom: 12px;">机器学习</h4>
+        <h4 style="color: var(--primary-blue-dark); margin-bottom: 12px;">机器学习</h4>
         <p style="color: #555; font-size: 14px; line-height: 1.6;">
             <b>分类</b> · 决策边界可视化<br>
             <b>回归</b> · 拟合曲线动态展示<br>
@@ -300,7 +299,7 @@ with col_b:
     st.markdown("""
     <div class="preview-card">
         <div style="font-size: 40px; margin-bottom: 12px;">🧬</div>
-        <h4 style="color: var(--hhu-blue-dark); margin-bottom: 12px;">神经网络</h4>
+        <h4 style="color: var(--primary-blue-dark); margin-bottom: 12px;">神经网络</h4>
         <p style="color: #555; font-size: 14px; line-height: 1.6;">
             <b>前馈/BP</b> · 结构自由搭建<br>
             <b>CNN/RNN</b> · 卷积与循环可视化<br>
@@ -316,7 +315,7 @@ with col_c:
     st.markdown("""
     <div class="preview-card">
         <div style="font-size: 40px; margin-bottom: 12px;">🤖</div>
-        <h4 style="color: var(--hhu-blue-dark); margin-bottom: 12px;">国产大模型</h4>
+        <h4 style="color: var(--primary-blue-dark); margin-bottom: 12px;">国产大模型</h4>
         <p style="color: #555; font-size: 14px; line-height: 1.6;">
             <b>DeepSeek</b> · 深度求索<br>
             <b>智谱GLM</b> · 清华出品<br>
@@ -340,21 +339,21 @@ with path_col1:
         <div style="display: flex; gap: 20px; flex-wrap: wrap;">
             <div style="flex: 1; min-width: 160px;">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
-                    <span style="background: var(--hhu-blue); color: white; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 14px;">1</span>
+                    <span style="background: var(--primary-blue); color: white; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 14px;">1</span>
                     <span style="font-weight: bold; color: #333;">机器学习基础</span>
                 </div>
                 <p style="color: #666; font-size: 14px; margin-left: 34px;">先掌握分类、回归、聚类等经典算法。</p>
             </div>
             <div style="flex: 1; min-width: 160px;">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
-                    <span style="background: var(--hhu-blue); color: white; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 14px;">2</span>
+                    <span style="background: var(--primary-blue); color: white; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 14px;">2</span>
                     <span style="font-weight: bold; color: #333;">神经网络入门</span>
                 </div>
                 <p style="color: #666; font-size: 14px; margin-left: 34px;">从前馈网络开始，逐步深入CNN、RNN。</p>
             </div>
             <div style="flex: 1; min-width: 160px;">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
-                    <span style="background: var(--hhu-blue); color: white; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 14px;">3</span>
+                    <span style="background: var(--primary-blue); color: white; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 14px;">3</span>
                     <span style="font-weight: bold; color: #333;">前沿大模型</span>
                 </div>
                 <p style="color: #666; font-size: 14px; margin-left: 34px;">体验国产大模型，了解AI最新发展。</p>
@@ -366,7 +365,7 @@ with path_col1:
 with path_col2:
     st.markdown("""
     <div style="background: white; border-radius: 16px; padding: 20px; border: 1px solid #e0e0e0;">
-        <div style="font-weight: bold; color: var(--hhu-blue-dark); margin-bottom: 10px;">
+        <div style="font-weight: bold; color: var(--primary-blue-dark); margin-bottom: 10px;">
             📢 平台公告
             <span class="accent-tag">NEW</span>
         </div>

@@ -1,6 +1,6 @@
 {
   "knowledge_base": "ai_algorithm_visualization_platform_machine_learning",
-  "display_name": "河海大学 AI 算法可视化学习平台机器学习模块知识库",
+  "display_name": "智视AI 算法可视化学习平台机器学习模块知识库",
   "version": "1.0",
   "description": "面向本科生人工智能与机器学习课程的可视化学习模块配置，覆盖分类、回归、聚类三类算法页面、顶部概念引入小游戏、参数联动主图和教学说明。",
   "modules": {

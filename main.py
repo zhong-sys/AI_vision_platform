@@ -5,7 +5,7 @@ from utils.helpers import resource_path
 
 # ==================== 页面全局配置 ====================
 st.set_page_config(
-    page_title="河海大学 · AI算法可视化学习平台",
+    page_title="智视AI · 算法可视化学习平台",
     page_icon="🧠",
     layout="wide",
     menu_items={}
@@ -29,26 +29,26 @@ if "current_page" not in st.session_state:
 # ==================== 顶部标题栏 ====================
 col1, col2, col3 = st.columns([1, 4, 1])
 with col1:
-    st.image(resource_path("assets/hhu_logo.png"), width=60)
+    st.image(resource_path("assets/logo.png"), width=80)
 with col2:
     st.markdown(
-        '<div style="display: flex; align-items: baseline;"><span class="school-name">河海大学</span><span class="platform-title">AI算法可视化学习平台</span></div>',
+        '<div style="display: flex; align-items: baseline;"><span class="school-name">智视<span style="font-size:1.15em; vertical-align:-0.05em">AI</span></span><span class="platform-title">算法可视化学习平台</span></div>',
         unsafe_allow_html=True)
 with col3:
     st.markdown(
-        f'<div style="text-align: right; padding-top: 10px;"><span style="color: {config.HHU_BLUE};">💧 水之子 · 智未来</span></div>',
+        f'<div style="text-align: right; padding-top: 10px;"><span style="color: {config.PRIMARY_BLUE};">智见未来 · 学无止境</span></div>',
         unsafe_allow_html=True)
 st.markdown('<div class="top-gradient"></div>', unsafe_allow_html=True)
 
 # ==================== 左侧导航栏（全部使用 st.button） ====================
 with st.sidebar:
     # 校徽
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        st.image(resource_path("assets/hhu_logo.png"), width=160)
-    st.markdown(
-        f'<p style="color: {config.HHU_BLUE}; font-weight: bold; text-align: center; margin-top: 5px;">Hohai University</p>',
-        unsafe_allow_html=True)
+    _, logo_col, _ = st.columns([1, 2, 1])
+    with logo_col:
+        st.image(resource_path("assets/logo.png"), use_container_width=True)
+        st.markdown(
+            f'<p style="color: {config.PRIMARY_BLUE}; font-weight: bold; text-align: center; margin-top: 5px;">智视<span style="font-size:1.15em; margin-left: 3px;">AI</span></p>',
+            unsafe_allow_html=True)
     st.markdown("---")
 
     # 机器学习模块
@@ -99,21 +99,20 @@ with st.sidebar:
         st.session_state.current_page = "home"
         st.rerun()
 
-    # 校训
+    # 平台理念
     st.markdown("---")
     st.markdown("""
     <div class="motto-bar">
-        <div style="font-weight: bold; margin-bottom: 5px;">校训</div>
-        <div>艰苦朴素 · 实事求是</div>
-        <div>严格要求 · 勇于探索</div>
+        <div style="font-weight: bold; margin-bottom: 5px;">理念</div>
+        <div>智见未来 · 视界无限</div>
+        <div>知行合一 · 学无止境</div>
     </div>
     """, unsafe_allow_html=True)
 
     # 底部信息
     st.markdown("""
     <div style="margin-top: 30px; text-align: center; color: #999; font-size: 12px;">
-        © 2026 河海大学<br>
-        信息科学与工程学院
+        © 2026 智视<span style="font-size:1.15em">AI</span> · 算法可视化学习平台
     </div>
     """, unsafe_allow_html=True)
 
@@ -187,7 +186,7 @@ else:
         from pages_modules import home
         home.show()
     except ImportError:
-        st.title("🧠 欢迎使用 AI 算法可视化学习平台")
+        st.title("🧠 欢迎使用算法可视化学习平台")
         st.markdown("通过拖拽组件、调整参数、观察实时变化，直观理解人工智能算法。")
         st.info("👈 请从左侧菜单选择模块开始学习。")
 
