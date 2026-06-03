@@ -1,5 +1,6 @@
 # main.py
 import streamlit as st
+import streamlit.components.v1 as components
 import config
 from utils.helpers import resource_path
 
@@ -21,6 +22,44 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+components.html(
+    """
+    <script>
+    (() => {
+        const win = window.parent;
+        const doc = window.parent.document;
+        if (doc.__zhishiAiCopyShortcutGuard) return;
+        doc.__zhishiAiCopyShortcutGuard = true;
+
+        const isEditableTarget = (target) => {
+            if (!target) return false;
+            const element = target.nodeType === Node.ELEMENT_NODE
+                ? target
+                : target.parentElement;
+            if (!element) return false;
+            return Boolean(element.closest(
+                "input, textarea, select, [contenteditable='true'], [role='textbox']"
+            ));
+        };
+
+        const blockCacheShortcut = (event) => {
+            const key = (event.key || "").toLowerCase();
+            if (key === "c" && !isEditableTarget(event.target)) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+        };
+
+        win.addEventListener("keydown", blockCacheShortcut, true);
+        win.addEventListener("keyup", blockCacheShortcut, true);
+        doc.addEventListener("keydown", blockCacheShortcut, true);
+        doc.addEventListener("keyup", blockCacheShortcut, true);
+    })();
+    </script>
+    """,
+    height=0,
+    width=0,
+)
 
 # ==================== 初始化 session_state ====================
 if "current_page" not in st.session_state:
@@ -32,11 +71,11 @@ with col1:
     st.image(resource_path("assets/logo.png"), width=80)
 with col2:
     st.markdown(
-        '<div style="display: flex; align-items: baseline;"><span class="school-name">智视<span style="font-size:1.15em; vertical-align:-0.05em">AI</span></span><span class="platform-title">算法可视化学习平台</span></div>',
+        '<div class="brand-title-row"><span class="school-name">智视<span style="font-size:1.15em; vertical-align:-0.05em">AI</span></span><span class="platform-title">算法可视化学习平台</span></div>',
         unsafe_allow_html=True)
 with col3:
     st.markdown(
-        f'<div style="text-align: right; padding-top: 10px;"><span style="color: {config.PRIMARY_BLUE};">智见未来 · 学无止境</span></div>',
+        '<div class="header-motto">智见未来 · 学无止境</div>',
         unsafe_allow_html=True)
 st.markdown('<div class="top-gradient"></div>', unsafe_allow_html=True)
 

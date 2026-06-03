@@ -43,6 +43,7 @@ GLOBAL_CSS = """
         font-weight: 700;
         color: #0F5B9E;
         letter-spacing: 6px;
+        white-space: nowrap;
     }
     .platform-title {
         font-size: 18px;
@@ -51,6 +52,19 @@ GLOBAL_CSS = """
         padding-left: 15px;
         border-left: 2px solid #ddd;
         font-weight: 400;
+        white-space: nowrap;
+    }
+    .brand-title-row {
+        display: flex;
+        align-items: baseline;
+        flex-wrap: nowrap;
+        white-space: nowrap;
+    }
+    .header-motto {
+        text-align: right;
+        padding-top: 10px;
+        color: #1A7EC1;
+        white-space: nowrap;
     }
     .sidebar-header {
         font-size: 16px;
@@ -86,6 +100,45 @@ GLOBAL_CSS = """
         margin-bottom: 12px;
         font-weight: 600;
     }
+    [data-testid="stHorizontalBlock"] {
+        align-items: stretch;
+    }
+    [data-testid="stHorizontalBlock"]:has(.guide-card) [data-testid="column"],
+    [data-testid="stHorizontalBlock"]:has(.preview-card) [data-testid="column"] {
+        display: flex;
+    }
+    [data-testid="stHorizontalBlock"]:has(.guide-card) [data-testid="column"] > div,
+    [data-testid="stHorizontalBlock"]:has(.preview-card) [data-testid="column"] > div,
+    [data-testid="stHorizontalBlock"]:has(.guide-card) [data-testid="column"] [data-testid="stMarkdown"],
+    [data-testid="stHorizontalBlock"]:has(.preview-card) [data-testid="column"] [data-testid="stMarkdown"],
+    [data-testid="stHorizontalBlock"]:has(.guide-card) [data-testid="column"] [data-testid="stMarkdown"] > div,
+    [data-testid="stHorizontalBlock"]:has(.preview-card) [data-testid="column"] [data-testid="stMarkdown"] > div {
+        display: flex;
+        width: 100%;
+    }
+    .guide-card-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1.75rem;
+        align-items: stretch;
+    }
+    .preview-card-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1.75rem;
+        align-items: stretch;
+    }
+    .learning-path-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+        gap: 1.75rem;
+        align-items: stretch;
+    }
+    .path-card, .announcement-card {
+        box-sizing: border-box;
+        height: 100%;
+        width: 100%;
+    }
     .guide-card, .preview-card {
         background: white;
         border-radius: 16px;
@@ -93,7 +146,22 @@ GLOBAL_CSS = """
         box-shadow: 0 4px 12px rgba(0,0,0,0.04);
         border: 1px solid #EDF2F7;
         transition: all 0.2s ease;
+        box-sizing: border-box;
+        flex-direction: column;
         height: 100%;
+        width: 100%;
+    }
+    @media (max-width: 720px) {
+        .guide-card-grid,
+        .preview-card-grid,
+        .learning-path-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    @media (max-width: 1100px) {
+        .header-motto {
+            display: none;
+        }
     }
     .guide-card:hover, .preview-card:hover {
         box-shadow: 0 8px 20px rgba(26, 126, 193, 0.08);

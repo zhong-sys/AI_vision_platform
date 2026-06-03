@@ -53,7 +53,7 @@ MODEL_INTROS = {
 
 MODEL_CONFIGS = {
     "DeepSeek": {
-        "model": "deepseek-chat",
+        "model": "deepseek-v4-flash",
         "base_url": "https://api.deepseek.com",
     },
     "智谱GLM": {

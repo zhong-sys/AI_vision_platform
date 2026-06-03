@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import os
 import sys
 
@@ -47,6 +48,7 @@ st.markdown("""
         font-weight: 700;
         color: var(--primary-blue-dark);
         letter-spacing: 6px;
+        white-space: nowrap;
     }
     .platform-title {
         font-size: 18px;
@@ -55,6 +57,20 @@ st.markdown("""
         padding-left: 15px;
         border-left: 2px solid #ddd;
         font-weight: 400;
+        white-space: nowrap;
+    }
+    .brand-title-row {
+        display: flex;
+        align-items: baseline;
+        flex-wrap: nowrap;
+        white-space: nowrap;
+    }
+    .header-motto {
+        text-align: right;
+        padding-top: 10px;
+        color: var(--primary-blue);
+        font-weight: 500;
+        white-space: nowrap;
     }
     .sidebar-header {
         font-size: 16px;
@@ -90,6 +106,45 @@ st.markdown("""
         margin-bottom: 12px;
         font-weight: 600;
     }
+    [data-testid="stHorizontalBlock"] {
+        align-items: stretch;
+    }
+    [data-testid="stHorizontalBlock"]:has(.guide-card) [data-testid="column"],
+    [data-testid="stHorizontalBlock"]:has(.preview-card) [data-testid="column"] {
+        display: flex;
+    }
+    [data-testid="stHorizontalBlock"]:has(.guide-card) [data-testid="column"] > div,
+    [data-testid="stHorizontalBlock"]:has(.preview-card) [data-testid="column"] > div,
+    [data-testid="stHorizontalBlock"]:has(.guide-card) [data-testid="column"] [data-testid="stMarkdown"],
+    [data-testid="stHorizontalBlock"]:has(.preview-card) [data-testid="column"] [data-testid="stMarkdown"],
+    [data-testid="stHorizontalBlock"]:has(.guide-card) [data-testid="column"] [data-testid="stMarkdown"] > div,
+    [data-testid="stHorizontalBlock"]:has(.preview-card) [data-testid="column"] [data-testid="stMarkdown"] > div {
+        display: flex;
+        width: 100%;
+    }
+    .guide-card-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1.75rem;
+        align-items: stretch;
+    }
+    .preview-card-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1.75rem;
+        align-items: stretch;
+    }
+    .learning-path-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+        gap: 1.75rem;
+        align-items: stretch;
+    }
+    .path-card, .announcement-card {
+        box-sizing: border-box;
+        height: 100%;
+        width: 100%;
+    }
     .guide-card {
         background: white;
         border-radius: 16px;
@@ -97,6 +152,10 @@ st.markdown("""
         box-shadow: var(--card-shadow);
         border: 1px solid #EDF2F7;
         transition: all 0.2s ease;
+        box-sizing: border-box;
+        flex-direction: column;
+        height: 100%;
+        width: 100%;
     }
     .guide-card:hover {
         box-shadow: 0 8px 20px rgba(26, 126, 193, 0.08);
@@ -109,12 +168,27 @@ st.markdown("""
         border-radius: 16px;
         box-shadow: var(--card-shadow);
         border: 1px solid #EDF2F7;
+        box-sizing: border-box;
+        flex-direction: column;
         height: 100%;
+        width: 100%;
         transition: all 0.2s ease;
     }
     .preview-card:hover {
         box-shadow: 0 8px 20px rgba(26, 126, 193, 0.08);
         border-color: var(--primary-blue-light);
+    }
+    @media (max-width: 720px) {
+        .guide-card-grid,
+        .preview-card-grid,
+        .learning-path-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    @media (max-width: 1100px) {
+        .header-motto {
+            display: none;
+        }
     }
     .accent-tag {
         display: inline-block;
@@ -146,6 +220,44 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+components.html(
+    """
+    <script>
+    (() => {
+        const win = window.parent;
+        const doc = window.parent.document;
+        if (doc.__zhishiAiCopyShortcutGuard) return;
+        doc.__zhishiAiCopyShortcutGuard = true;
+
+        const isEditableTarget = (target) => {
+            if (!target) return false;
+            const element = target.nodeType === Node.ELEMENT_NODE
+                ? target
+                : target.parentElement;
+            if (!element) return false;
+            return Boolean(element.closest(
+                "input, textarea, select, [contenteditable='true'], [role='textbox']"
+            ));
+        };
+
+        const blockCacheShortcut = (event) => {
+            const key = (event.key || "").toLowerCase();
+            if (key === "c" && !isEditableTarget(event.target)) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+        };
+
+        win.addEventListener("keydown", blockCacheShortcut, true);
+        win.addEventListener("keyup", blockCacheShortcut, true);
+        doc.addEventListener("keydown", blockCacheShortcut, true);
+        doc.addEventListener("keyup", blockCacheShortcut, true);
+    })();
+    </script>
+    """,
+    height=0,
+    width=0,
+)
 
 # ==================== 顶部标题栏 ====================
 col1, col2, col3 = st.columns([1, 4, 1])
@@ -155,11 +267,11 @@ with col1:
         unsafe_allow_html=True)
 with col2:
     st.markdown(
-        '<div style="display: flex; align-items: baseline;"><span class="school-name">智视<span style="font-size:1.15em; vertical-align:-0.05em">AI</span></span><span class="platform-title">算法可视化学习平台</span></div>',
+        '<div class="brand-title-row"><span class="school-name">智视<span style="font-size:1.15em; vertical-align:-0.05em">AI</span></span><span class="platform-title">算法可视化学习平台</span></div>',
         unsafe_allow_html=True)
 with col3:
     st.markdown(
-        '<div style="text-align: right; padding-top: 10px;"><span style="color: var(--primary-blue); font-weight: 500;">智见未来 · 学无止境</span></div>',
+        '<div class="header-motto">智见未来 · 学无止境</div>',
         unsafe_allow_html=True)
 st.markdown('<div style="height: 2px; background: linear-gradient(90deg, var(--primary-blue), var(--primary-blue-light), var(--primary-blue));"></div>',
             unsafe_allow_html=True)
@@ -244,43 +356,32 @@ st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
 
 # 快速引导区
 st.markdown("### 🚀 快速开始")
-guide_col1, guide_col2, guide_col3 = st.columns(3)
-
-with guide_col1:
-    st.markdown("""
+st.markdown("""
+<div class="guide-card-grid">
     <div class="guide-card">
         <div style="font-size: 32px; margin-bottom: 10px;">1️⃣</div>
         <h4 style="color: var(--primary-blue-dark); margin-bottom: 8px;">选择算法模块</h4>
         <p style="color: #666; font-size: 14px;">从左侧菜单点击感兴趣的算法类别，如“分类”或“神经网络”。</p>
     </div>
-    """, unsafe_allow_html=True)
-
-with guide_col2:
-    st.markdown("""
     <div class="guide-card">
         <div style="font-size: 32px; margin-bottom: 10px;">2️⃣</div>
         <h4 style="color: var(--primary-blue-dark); margin-bottom: 8px;">调节参数观察变化</h4>
         <p style="color: #666; font-size: 14px;">使用滑块、下拉框调整模型参数，图表和结果会实时更新。</p>
     </div>
-    """, unsafe_allow_html=True)
-
-with guide_col3:
-    st.markdown("""
     <div class="guide-card">
         <div style="font-size: 32px; margin-bottom: 10px;">3️⃣</div>
         <h4 style="color: var(--primary-blue-dark); margin-bottom: 8px;">理解算法原理</h4>
         <p style="color: #666; font-size: 14px;">每个模块都配有通俗易懂的原理说明，边操作边学习。</p>
     </div>
-    """, unsafe_allow_html=True)
+</div>
+""", unsafe_allow_html=True)
 
 st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
 
 # 模块预览卡片
 st.markdown("### 📌 模块预览")
-col_a, col_b, col_c = st.columns(3)
-
-with col_a:
-    st.markdown("""
+st.markdown("""
+<div class="preview-card-grid">
     <div class="preview-card">
         <div style="font-size: 40px; margin-bottom: 12px;">📁</div>
         <h4 style="color: var(--primary-blue-dark); margin-bottom: 12px;">机器学习</h4>
@@ -293,10 +394,6 @@ with col_a:
             👆 点击左侧菜单开始 →
         </div>
     </div>
-    """, unsafe_allow_html=True)
-
-with col_b:
-    st.markdown("""
     <div class="preview-card">
         <div style="font-size: 40px; margin-bottom: 12px;">🧬</div>
         <h4 style="color: var(--primary-blue-dark); margin-bottom: 12px;">神经网络</h4>
@@ -309,10 +406,6 @@ with col_b:
             👆 点击左侧菜单开始 →
         </div>
     </div>
-    """, unsafe_allow_html=True)
-
-with col_c:
-    st.markdown("""
     <div class="preview-card">
         <div style="font-size: 40px; margin-bottom: 12px;">🤖</div>
         <h4 style="color: var(--primary-blue-dark); margin-bottom: 12px;">国产大模型</h4>
@@ -325,17 +418,16 @@ with col_c:
             👆 点击左侧菜单开始 →
         </div>
     </div>
-    """, unsafe_allow_html=True)
+</div>
+""", unsafe_allow_html=True)
 
 st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
 
 # 推荐学习路径
 st.markdown("### 🎓 推荐学习路径")
-path_col1, path_col2 = st.columns([2, 1])
-
-with path_col1:
-    st.markdown("""
-    <div style="background: #f8fbfe; border-radius: 16px; padding: 20px; border: 1px solid #d0e0f0;">
+st.markdown("""
+<div class="learning-path-grid">
+    <div class="path-card" style="background: #f8fbfe; border-radius: 16px; padding: 20px; border: 1px solid #d0e0f0;">
         <div style="display: flex; gap: 20px; flex-wrap: wrap;">
             <div style="flex: 1; min-width: 160px;">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
@@ -360,11 +452,7 @@ with path_col1:
             </div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
-
-with path_col2:
-    st.markdown("""
-    <div style="background: white; border-radius: 16px; padding: 20px; border: 1px solid #e0e0e0;">
+    <div class="announcement-card" style="background: white; border-radius: 16px; padding: 20px; border: 1px solid #e0e0e0;">
         <div style="font-weight: bold; color: var(--primary-blue-dark); margin-bottom: 10px;">
             📢 平台公告
             <span class="accent-tag">NEW</span>
@@ -375,7 +463,8 @@ with path_col2:
             <li>更多可视化效果持续更新中</li>
         </ul>
     </div>
-    """, unsafe_allow_html=True)
+</div>
+""", unsafe_allow_html=True)
 
 st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
 

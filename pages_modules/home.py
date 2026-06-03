@@ -21,39 +21,32 @@ def show():
 
     # 快速引导
     st.markdown("### 🚀 快速开始")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown(f"""
+    st.markdown(f"""
+    <div class="guide-card-grid">
         <div class="guide-card">
             <div style="font-size: 32px; margin-bottom: 10px;">1️⃣</div>
             <h4 style="color: {config.PRIMARY_BLUE_DARK};">选择算法模块</h4>
             <p style="color: #666; font-size: 17px;">从左侧菜单点击感兴趣的算法类别，如“分类”或“神经网络”。</p>
         </div>
-        """, unsafe_allow_html=True)
-    with col2:
-        st.markdown(f"""
         <div class="guide-card">
             <div style="font-size: 32px; margin-bottom: 10px;">2️⃣</div>
             <h4 style="color: {config.PRIMARY_BLUE_DARK};">调节参数观察变化</h4>
             <p style="color: #666; font-size: 17px;">使用滑块、下拉框调整模型参数，图表和结果会实时更新。</p>
         </div>
-        """, unsafe_allow_html=True)
-    with col3:
-        st.markdown(f"""
         <div class="guide-card">
             <div style="font-size: 32px; margin-bottom: 10px;">3️⃣</div>
             <h4 style="color: {config.PRIMARY_BLUE_DARK};">理解算法原理</h4>
             <p style="color: #666; font-size: 17px;">每个模块都配有通俗易懂的原理说明，边操作边学习。</p>
         </div>
-        """, unsafe_allow_html=True)
+    </div>
+    """, unsafe_allow_html=True)
 
     st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
 
     # 模块预览
     st.markdown("### 📌 模块预览")
-    col_a, col_b, col_c = st.columns(3)
-    with col_a:
-        st.markdown(f"""
+    st.markdown(f"""
+    <div class="preview-card-grid">
         <div class="preview-card">
             <div style="font-size: 40px; margin-bottom: 12px;">📁</div>
             <h4 style="color: {config.PRIMARY_BLUE_DARK};">机器学习</h4>
@@ -66,9 +59,6 @@ def show():
                 👆 点击左侧菜单开始 →
             </div>
         </div>
-        """, unsafe_allow_html=True)
-    with col_b:
-        st.markdown(f"""
         <div class="preview-card">
             <div style="font-size: 40px; margin-bottom: 12px;">🧬</div>
             <h4 style="color: {config.PRIMARY_BLUE_DARK};">神经网络</h4>
@@ -81,9 +71,6 @@ def show():
                 👆 点击左侧菜单开始 →
             </div>
         </div>
-        """, unsafe_allow_html=True)
-    with col_c:
-        st.markdown(f"""
         <div class="preview-card">
             <div style="font-size: 40px; margin-bottom: 12px;">🤖</div>
             <h4 style="color: {config.PRIMARY_BLUE_DARK};">国产大模型</h4>
@@ -96,16 +83,16 @@ def show():
                 👆 点击左侧菜单开始 →
             </div>
         </div>
-        """, unsafe_allow_html=True)
+    </div>
+    """, unsafe_allow_html=True)
 
     st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
 
     # 推荐学习路径
     st.markdown("### 🎓 推荐学习路径")
-    path_col1, path_col2 = st.columns([2, 1])
-    with path_col1:
-        st.markdown(f"""
-        <div style="background: #f8fbfe; border-radius: 16px; padding: 20px; border: 1px solid #d0e0f0;">
+    st.markdown(f"""
+    <div class="learning-path-grid">
+        <div class="path-card" style="background: #f8fbfe; border-radius: 16px; padding: 20px; border: 1px solid #d0e0f0;">
             <div style="display: flex; gap: 20px; flex-wrap: wrap;">
                 <div style="flex: 1; min-width: 160px;">
                     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
@@ -130,10 +117,7 @@ def show():
                 </div>
             </div>
         </div>
-        """, unsafe_allow_html=True)
-    with path_col2:
-        st.markdown(f"""
-        <div style="background: white; border-radius: 16px; padding: 20px; border: 1px solid #e0e0e0;">
+        <div class="announcement-card" style="background: white; border-radius: 16px; padding: 20px; border: 1px solid #e0e0e0;">
             <div style="font-weight: bold; color: {config.PRIMARY_BLUE_DARK}; margin-bottom: 10px;">
                 📢 平台公告
                 <span class="accent-tag">NEW</span>
@@ -144,7 +128,8 @@ def show():
                 <li>更多可视化效果持续更新中</li>
             </ul>
         </div>
-        """, unsafe_allow_html=True)
+    </div>
+    """, unsafe_allow_html=True)
 
     st.markdown("<div style='margin-top: 2rem;'></div>", unsafe_allow_html=True)
 

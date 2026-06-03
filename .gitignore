@@ -1,9 +1,16 @@
-.streamlit/secrets.toml
-.venv/
+# Python-generated files
 __pycache__/
-dist/
-*.pyc
-dist.zip
+*.py[oc]
 build/
-.devcontainer/
-CLAUDE.md
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Secrets
+.streamlit/secrets.toml
+
+# Build artifacts
+dist.zip
