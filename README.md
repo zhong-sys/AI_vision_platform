@@ -41,7 +41,7 @@ AI_vision_platform/
 └── .streamlit/               # 本地 Streamlit 配置与 secrets 示例
 ```
 
-`pages_modules/NeuralVis/`、`.idea/` 和 Python 缓存等已确认不参与当前 Streamlit 主程序的内容保存在本地被忽略目录 `.local_archive/phase3_legacy/`，不会随仓库提交。`face.py` 暂时保留在根目录，因为备用入口 `run.py`/`run.spec` 仍引用它。
+`pages_modules/NeuralVis/`、`.idea/`、旧备用入口和 Python 缓存等不参与当前 Streamlit 主程序的内容保存在本地被忽略目录 `.local_archive/phase3_legacy/`，不会随仓库提交。当前部署入口为 `main.py`；如需生成桌面版，可使用 `launcher.py` 与 `launcher.spec`。
 
 ## 安装方式
 

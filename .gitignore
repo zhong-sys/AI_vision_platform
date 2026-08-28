@@ -35,6 +35,13 @@ dist.zip
 /agent.md
 /CLAUDE.md
 
+# Development-only and legacy entry points kept in the local archive
+/.devcontainer/
+/prompt_engineering/
+/face.py
+/run.py
+/run.spec
+
 # Secrets and local environment files
 .streamlit/secrets.toml
 .env
