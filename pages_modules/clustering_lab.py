@@ -4,6 +4,15 @@ import numpy as np
 import streamlit as st
 from PIL import Image
 
+from components.experiment_panel import (
+    render_experiment_guide,
+    render_learning_goals,
+    render_observation,
+    render_parameter_explanation,
+    render_preset_controls,
+)
+from components.page_header import render_page_header
+
 try:
     from matplotlib.figure import Figure
 except Exception:
@@ -39,6 +48,85 @@ STATE_DEFAULTS = {
     "clustering_intro_game_submitted": False,
     "clustering_intro_game_answer": "A",
 }
+
+
+CLUSTERING_PRESETS = {
+    "标准示例": "保持当前算法原始控件默认值，适合先熟悉聚类结构。",
+    "典型现象": "适度改变簇数或邻域条件，观察群体结构如何变化。",
+    "极端参数": "将聚类边界条件推向一侧，观察可能出现的碎片或合并。",
+    "高噪声/复杂情况": "增加噪声与迭代量，练习识别稳定簇与噪声点。",
+}
+
+
+def _clustering_preset_values(algorithm_key, preset_name):
+    """Return only existing clustering-control values for a teaching preset."""
+    sample_default = sample_config(algorithm_key)[2]
+    values = {
+        "dataset_key": get_default_dataset(algorithm_key),
+        "sample_count": sample_default,
+        "noise": default_noise(algorithm_key),
+        "n_clusters": 3,
+        "init": "kmeans++",
+        "n_init": 4,
+        "max_iter": 16,
+        "eps": 0.28,
+        "min_samples": 5,
+        "linkage": "single",
+        "n_components": 3,
+        "covariance_type": "full",
+    }
+    if algorithm_key == "agg":
+        values.update({"n_clusters": 3, "linkage": "single"})
+    elif algorithm_key == "gmm":
+        values.update({"n_components": 3, "covariance_type": "full", "max_iter": 18})
+
+    if preset_name == "典型现象":
+        values.update({"sample_count": min(sample_default + 20, 260), "noise": min(0.24, 0.80)})
+        if algorithm_key == "kmeans":
+            values.update({"n_clusters": 4, "n_init": 6, "max_iter": 20})
+        elif algorithm_key == "dbscan":
+            values.update({"eps": 0.36, "min_samples": 6})
+        elif algorithm_key == "agg":
+            values.update({"n_clusters": 4, "linkage": "complete"})
+        else:
+            values.update({"n_components": 4, "covariance_type": "diag", "max_iter": 24})
+    elif preset_name == "极端参数":
+        values.update({"sample_count": max(100, sample_default - 40), "noise": 0.48})
+        if algorithm_key == "kmeans":
+            values.update({"n_clusters": 6, "init": "random", "n_init": 1, "max_iter": 4})
+        elif algorithm_key == "dbscan":
+            values.update({"eps": 0.10, "min_samples": 12})
+        elif algorithm_key == "agg":
+            values.update({"n_clusters": 6, "linkage": "single"})
+        else:
+            values.update({"n_components": 5, "covariance_type": "diag", "max_iter": 8})
+    elif preset_name == "高噪声/复杂情况":
+        values.update({"sample_count": min(sample_default + 60, 260), "noise": 0.70})
+        if algorithm_key == "kmeans":
+            values.update({"n_clusters": 3, "init": "kmeans++", "n_init": 8, "max_iter": 30})
+        elif algorithm_key == "dbscan":
+            values.update({"eps": 0.52, "min_samples": 4})
+        elif algorithm_key == "agg":
+            values.update({"n_clusters": 3, "linkage": "ward"})
+        else:
+            values.update({"n_components": 3, "covariance_type": "full", "max_iter": 36})
+    return values
+
+
+def _apply_clustering_preset():
+    preset_name = st.session_state.get("clu_teaching_preset", "标准示例")
+    algorithm_key = st.session_state.get("cluster_lab_algorithm", "kmeans")
+    values = _clustering_preset_values(algorithm_key, preset_name)
+    st.session_state["cluster_lab_dataset"] = values["dataset_key"]
+
+
+def _reset_clustering_defaults():
+    algorithm_key = st.session_state.get("cluster_lab_algorithm", "kmeans")
+    values = _clustering_preset_values(algorithm_key, "标准示例")
+    st.session_state["clu_teaching_preset"] = "标准示例"
+    st.session_state["cluster_lab_dataset"] = values["dataset_key"]
+    st.session_state["cluster_lab_seed"] = STATE_DEFAULTS["cluster_lab_seed"]
+    st.session_state["cluster_lab_view_nonce"] = STATE_DEFAULTS["cluster_lab_view_nonce"]
 
 CLUSTERING_INTRO_QUESTIONS = [
     {
@@ -147,18 +235,15 @@ def render_clustering_lab():
     algo_info = algorithm_overview(algorithm_key)
     dataset_info = dataset_overview(dataset_key)
 
-    if st.button("🏠 返回首页", key="clu_back_home", use_container_width=False):
-        st.session_state.current_page = "home"
-        st.rerun()
-    st.markdown("---")
+    render_page_header(
+        title="无监督聚类可视化学习实验室",
+        module="机器学习 / 聚类",
+        description="先选算法，再切换最适合它的教学数据，随后观察簇结构、参数变化和内部评价指标如何一起改变。",
+        back_key="clu_back_home",
+    )
     st.markdown(
         """
         <div class="lab-hero">
-            <div class="lab-overline">机器学习 · 聚类</div>
-            <div class="lab-title">无监督聚类可视化学习实验室</div>
-            <div class="lab-subtitle">
-                先选算法，再切换最适合它的教学数据，随后观察簇结构、参数变化和内部评价指标如何一起改变。
-            </div>
             <div class="lab-badges">
                 <span class="lab-badge">当前算法：{0}</span>
                 <span class="lab-badge">当前数据：{1}</span>
@@ -172,6 +257,31 @@ def render_clustering_lab():
         unsafe_allow_html=True,
     )
 
+    render_learning_goals(
+        [
+            "理解聚类如何在没有标签的情况下依据相似性发现群体。",
+            "比较 KMeans、DBSCAN、层次聚类和 GMM 的分组假设。",
+            "结合主图、簇数量、噪声点和轮廓系数观察结构。",
+            "练习区分参数造成的结构变化与数据本身的复杂性。",
+        ]
+    )
+    render_experiment_guide(
+        [
+            "先观察原始样本分布，再记录你预期的群体数量或密度。",
+            "从“标准示例”开始，只调整一个聚类参数。",
+            "切换数据集或增加噪声，比较簇结构与噪声点变化。",
+            "结合轮廓系数等已有指标，写下结构是否稳定的理由。",
+        ]
+    )
+    preset_name = render_preset_controls(
+        CLUSTERING_PRESETS,
+        key="clu_teaching_preset",
+        reset_key="clu_teaching_reset",
+        on_preset_change=_apply_clustering_preset,
+        on_reset=_reset_clustering_defaults,
+    )
+    preset_values = _clustering_preset_values(algorithm_key, preset_name)
+
     with st.expander("聚类基础知识", expanded=False):
         for index, (title, body) in enumerate(clustering_basics_sections()):
             st.markdown("**{0}. {1}**".format(index + 1, title))
@@ -183,7 +293,7 @@ def render_clustering_lab():
 
     control_col, content_col = st.columns([0.84, 2.96], gap="medium")
     with control_col:
-        settings = render_control_panel(algorithm_key)
+        settings = render_control_panel(algorithm_key, preset_values=preset_values)
 
     lab_result = build_lab_result(
         algorithm_key=settings["algorithm_key"],
@@ -197,6 +307,16 @@ def render_clustering_lab():
         render_display_panel(settings["algorithm_key"], settings["params"], lab_result)
 
     st.markdown("<div style='height: 0.35rem;'></div>", unsafe_allow_html=True)
+    render_parameter_explanation(
+        build_clustering_parameter_explanations(
+            settings["algorithm_key"], settings["params"], settings["noise"]
+        )
+    )
+    render_observation(build_clustering_observation(lab_result))
+    if settings.get("compare_enabled", False):
+        render_clustering_comparison(
+            lab_result, settings["algorithm_key"], settings["dataset_key"], settings["compare_algorithm"]
+        )
     render_bottom_panel(settings["algorithm_key"], settings["dataset_key"], settings["params"], lab_result)
 
 
@@ -498,7 +618,8 @@ def inject_page_css():
     )
 
 
-def render_control_panel(algorithm_key):
+def render_control_panel(algorithm_key, preset_values=None):
+    preset_values = preset_values or {}
     st.markdown("### 操作区")
     algorithm_key = st.radio(
         "选择算法",
@@ -523,12 +644,28 @@ def render_control_panel(algorithm_key):
 
     sample_cfg = sample_config(algorithm_key)
     with st.expander("数据设置", expanded=True):
-        sample_count = st.slider("样本数量", sample_cfg[0], sample_cfg[1], sample_cfg[2], sample_cfg[3])
-        noise = st.slider("噪声强度", 0.00, 0.80, default_noise(algorithm_key), 0.02)
+        sample_count = st.slider(
+            "样本数量", sample_cfg[0], sample_cfg[1], int(preset_values.get("sample_count", sample_cfg[2])), sample_cfg[3]
+        )
+        noise = st.slider("噪声强度", 0.00, 0.80, float(preset_values.get("noise", default_noise(algorithm_key))), 0.02)
         st.caption(get_dataset_summary(dataset_key))
 
     with st.expander("算法参数", expanded=True):
-        params = render_parameter_controls(algorithm_key)
+        params = render_parameter_controls(algorithm_key, preset_values=preset_values)
+
+    compare_enabled = st.checkbox("启用基础算法对比模式", key="clu_compare_enabled")
+    compare_options = [key for key in ALGORITHM_LABELS if key != algorithm_key]
+    if st.session_state.get("clu_compare_algorithm") not in compare_options:
+        st.session_state["clu_compare_algorithm"] = compare_options[0]
+    if compare_enabled:
+        compare_algorithm = st.selectbox(
+            "选择对比算法",
+            options=compare_options,
+            format_func=lambda key: ALGORITHM_LABELS[key],
+            key="clu_compare_algorithm",
+        )
+    else:
+        compare_algorithm = st.session_state.get("clu_compare_algorithm", compare_options[0])
 
     algo_info = algorithm_overview(algorithm_key)
     st.markdown("#### 当前算法提醒")
@@ -540,6 +677,8 @@ def render_control_panel(algorithm_key):
         "sample_count": sample_count,
         "noise": noise,
         "params": params,
+        "compare_enabled": compare_enabled,
+        "compare_algorithm": compare_algorithm,
     }
 
 
@@ -561,26 +700,114 @@ def default_noise(algorithm_key):
     return mapping[algorithm_key]
 
 
-def render_parameter_controls(algorithm_key):
+def build_clustering_parameter_explanations(algorithm_key, params, noise):
+    """Create cautious, rule-based explanations for the current controls."""
+    explanations = [
+        "噪声强度为 {0:.2f}：噪声点或边界样本增多的可能性通常会提高，建议结合结构图观察。".format(noise),
+    ]
+    if algorithm_key == "kmeans":
+        clusters = int(params["n_clusters"])
+        explanations.append("簇数量 K={0}：K 较大时可能把一个群体拆成多个小簇，K 较小时可能合并相近群体。".format(clusters))
+        explanations.append("初始化方式为 {0}，重复初始化 {1} 次：建议观察中心移动轨迹是否稳定。".format(
+            "KMeans++" if params["init"] == "kmeans++" else "随机中心", int(params["n_init"])
+        ))
+    elif algorithm_key == "dbscan":
+        explanations.append("邻域半径 eps={0:.2f}：半径增大时更多点可能互相连通，建议同时观察噪声点数量。".format(float(params["eps"])))
+        explanations.append("核心点最少邻居数={0}：阈值提高后，成为核心点的条件通常更严格。".format(int(params["min_samples"])))
+    elif algorithm_key == "agg":
+        explanations.append("簇数量={0}、连接方式={1}：不同连接准则会改变样本合并顺序，建议观察层次结构。".format(
+            int(params["n_clusters"]), params["linkage"]
+        ))
+    else:
+        explanations.append("高斯成分数={0}：成分数增加时模型可能表达更多局部团块，也可能把噪声分成小成分。".format(
+            int(params["n_components"])
+        ))
+        explanations.append("协方差类型为 {0}、最大迭代次数为 {1}：建议观察椭圆形状和收敛后的结构。".format(
+            params["covariance_type"], int(params["max_iter"])
+        ))
+    return explanations
+
+
+def build_clustering_observation(lab_result):
+    metrics = lab_result["metrics"]
+    silhouette = metrics.get("silhouette")
+    silhouette_text = "不可用" if silhouette is None else "{0:.3f}".format(float(silhouette))
+    observation = [
+        "当前识别到 {0} 个簇，噪声点 {1} 个，轮廓系数 {2}。".format(
+            int(metrics["cluster_count"]), int(metrics["noise_count"]), silhouette_text
+        ),
+        "建议同时看样本分布和指标；单一指标不能替代对结构图的判断。",
+    ]
+    if silhouette is not None and float(silhouette) < 0.20:
+        observation.append("轮廓系数相对较低，簇间分离可能不明显，可尝试调整一个参数或更换教学数据。")
+    else:
+        observation.append("当前结构可作为继续实验的起点，建议比较相同数据下不同算法的分组边界。")
+    return observation
+
+
+def build_clustering_comparison(primary_result, primary_algorithm, dataset_key, compare_algorithm):
+    """Fit a second existing clusterer on the primary run's exact data."""
+    params = _clustering_preset_values(compare_algorithm, "标准示例")
+    X = primary_result["X"]
+    model = build_clusterer(compare_algorithm, params)
+    model.fit(X)
+    labels = np.asarray(model.labels_, dtype=int)
+    metrics = build_clustering_metrics(X, labels)
+    extras = build_algorithm_extras(compare_algorithm, dataset_key, model, X, labels, params, metrics)
+    context = {
+        "visual_title": ALGORITHM_LABELS[compare_algorithm],
+        "X": X,
+        "labels": labels,
+        "metrics": metrics,
+    }
+    context.update(extras)
+    return {
+        "algorithm_key": compare_algorithm,
+        "metrics": metrics,
+        "visual_context": context,
+    }
+
+
+def render_clustering_comparison(primary_result, primary_algorithm, dataset_key, compare_algorithm):
+    comparison = build_clustering_comparison(primary_result, primary_algorithm, dataset_key, compare_algorithm)
+    st.markdown("### 基础算法对比")
+    st.caption("两种算法复用同一数据集和当前页面随机种子；对比算法使用原始默认参数。")
+    columns = st.columns(2, gap="medium")
+    entries = [(primary_algorithm, primary_result), (compare_algorithm, comparison)]
+    for column, (algorithm_key, result) in zip(columns, entries):
+        with column:
+            st.markdown("#### {0}".format(ALGORITHM_LABELS[algorithm_key]))
+            visual = render_main_visual(algorithm_key, result["visual_context"])
+            render_visual_output(visual, "对比主图未成功生成，请稍后重试。")
+            metrics = result["metrics"]
+            silhouette = metrics.get("silhouette")
+            silhouette_text = "--" if silhouette is None else "{0:.3f}".format(float(silhouette))
+            st.metric("轮廓系数", silhouette_text)
+            st.caption("簇数量 {0} · 噪声点 {1}".format(int(metrics["cluster_count"]), int(metrics["noise_count"])))
+
+
+def render_parameter_controls(algorithm_key, preset_values=None):
+    preset_values = preset_values or {}
     if algorithm_key == "kmeans":
         return {
-            "n_clusters": st.slider("簇数量", 2, 6, 3, 1),
+            "n_clusters": st.slider("簇数量", 2, 6, int(preset_values.get("n_clusters", 3)), 1),
             "init": st.selectbox(
                 "初始化方式",
                 options=["kmeans++", "random"],
                 format_func=lambda item: "KMeans++" if item == "kmeans++" else "随机中心",
+                index=["kmeans++", "random"].index(preset_values.get("init", "kmeans++")),
             ),
-            "n_init": st.slider("重复初始化次数", 1, 8, 4, 1),
-            "max_iter": st.slider("最大迭代次数", 4, 30, 16, 1),
+            "n_init": st.slider("重复初始化次数", 1, 8, int(preset_values.get("n_init", 4)), 1),
+            "max_iter": st.slider("最大迭代次数", 4, 30, int(preset_values.get("max_iter", 16)), 1),
         }
     if algorithm_key == "dbscan":
         return {
-            "eps": st.slider("邻域半径", 0.10, 0.80, 0.28, 0.01),
-            "min_samples": st.slider("核心点最少邻居数", 3, 12, 5, 1),
+            "eps": st.slider("邻域半径", 0.10, 0.80, float(preset_values.get("eps", 0.28)), 0.01),
+            "min_samples": st.slider("核心点最少邻居数", 3, 12, int(preset_values.get("min_samples", 5)), 1),
         }
     if algorithm_key == "agg":
         return {
-            "n_clusters": st.slider("簇数量", 2, 6, 3, 1),
+            "n_clusters": st.slider("簇数量", 2, 6, int(preset_values.get("n_clusters", 3)), 1),
             "linkage": st.selectbox(
                 "连接方式",
                 options=["single", "complete", "average", "ward"],
@@ -590,16 +817,18 @@ def render_parameter_controls(algorithm_key):
                     "average": "average（平均距离）",
                     "ward": "ward（方差最小化）",
                 }[item],
+                index=["single", "complete", "average", "ward"].index(preset_values.get("linkage", "average")),
             ),
         }
     return {
-        "n_components": st.slider("高斯成分数", 2, 5, 3, 1),
+        "n_components": st.slider("高斯成分数", 2, 5, int(preset_values.get("n_components", 3)), 1),
         "covariance_type": st.selectbox(
             "协方差类型",
             options=["full", "diag"],
             format_func=lambda item: "full（完整协方差）" if item == "full" else "diag（对角协方差）",
+            index=["full", "diag"].index(preset_values.get("covariance_type", "full")),
         ),
-        "max_iter": st.slider("最大迭代次数", 8, 36, 18, 1),
+        "max_iter": st.slider("最大迭代次数", 8, 36, int(preset_values.get("max_iter", 18)), 1),
     }
 
 

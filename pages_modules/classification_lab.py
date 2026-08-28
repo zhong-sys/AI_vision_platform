@@ -4,6 +4,15 @@ import numpy as np
 import streamlit as st
 from PIL import Image
 
+from components.experiment_panel import (
+    render_experiment_guide,
+    render_learning_goals,
+    render_observation,
+    render_parameter_explanation,
+    render_preset_controls,
+)
+from components.page_header import render_page_header
+
 try:
     from matplotlib.figure import Figure
 except Exception:
@@ -42,6 +51,82 @@ STATE_DEFAULTS = {
     "classification_intro_game_submitted": False,
     "classification_intro_game_answer": "A",
 }
+
+
+CLASSIFICATION_PRESETS = {
+    "标准示例": "保持当前算法原始控件默认值，适合先熟悉页面。",
+    "典型现象": "适度改变复杂度和噪声，观察边界与泛化差异。",
+    "极端参数": "将关键参数推向边界，观察模型可能出现的过拟合或欠拟合现象。",
+    "高噪声/复杂情况": "增加噪声与样本量，练习从图表和指标中寻找稳定信号。",
+}
+
+
+def _classification_preset_values(algorithm_key, preset_name):
+    """Return only existing classification-control values for a teaching preset."""
+    values = {
+        "dataset_key": get_default_dataset(algorithm_key),
+        "sample_count": 220,
+        "noise": default_noise(algorithm_key),
+        "test_size": 0.28,
+        "n_neighbors": 5,
+        "weight_mode": "uniform",
+        "C": 1.2,
+        "kernel": "linear",
+        "gamma": 1.0,
+        "alpha": 0.060,
+        "n_estimators": 11,
+        "max_depth": 4,
+        "min_samples_split": 4,
+    }
+    if preset_name == "典型现象":
+        values.update({"noise": min(0.28, 0.50), "sample_count": 240})
+        if algorithm_key == "knn":
+            values.update({"n_neighbors": 9, "weight_mode": "distance"})
+        elif algorithm_key == "svm":
+            values.update({"C": 2.5, "gamma": 1.6, "kernel": "rbf"})
+        elif algorithm_key == "nb":
+            values.update({"alpha": 0.20})
+        else:
+            values.update({"n_estimators": 19, "max_depth": 5, "min_samples_split": 5})
+    elif preset_name == "极端参数":
+        values.update({"noise": 0.34, "sample_count": 200, "test_size": 0.40})
+        if algorithm_key == "knn":
+            values.update({"n_neighbors": 1, "weight_mode": "uniform"})
+        elif algorithm_key == "svm":
+            values.update({"C": 8.0, "gamma": 4.0, "kernel": "poly"})
+        elif algorithm_key == "nb":
+            values.update({"alpha": 1.0})
+        else:
+            values.update({"n_estimators": 31, "max_depth": 10, "min_samples_split": 2})
+    elif preset_name == "高噪声/复杂情况":
+        values.update({"noise": 0.46, "sample_count": 300, "test_size": 0.35})
+        if algorithm_key == "knn":
+            values.update({"n_neighbors": 15, "weight_mode": "distance"})
+        elif algorithm_key == "svm":
+            values.update({"C": 0.4, "gamma": 0.4, "kernel": "linear"})
+        elif algorithm_key == "nb":
+            values.update({"alpha": 0.35})
+        else:
+            values.update({"n_estimators": 25, "max_depth": 6, "min_samples_split": 8})
+    return values
+
+
+def _apply_classification_preset():
+    preset_name = st.session_state.get("cls_teaching_preset", "标准示例")
+    algorithm_key = st.session_state.get("cls_lab_algorithm", "knn")
+    values = _classification_preset_values(algorithm_key, preset_name)
+    # Dataset is an existing page control; numeric unkeyed controls receive
+    # preset defaults from render_control_panel on the following rerun.
+    st.session_state["cls_lab_dataset"] = values["dataset_key"]
+
+
+def _reset_classification_defaults():
+    algorithm_key = st.session_state.get("cls_lab_algorithm", "knn")
+    values = _classification_preset_values(algorithm_key, "标准示例")
+    st.session_state["cls_teaching_preset"] = "标准示例"
+    st.session_state["cls_lab_dataset"] = values["dataset_key"]
+    st.session_state["cls_lab_seed"] = STATE_DEFAULTS["cls_lab_seed"]
+    st.session_state["cls_lab_view_nonce"] = STATE_DEFAULTS["cls_lab_view_nonce"]
 
 CLASSIFICATION_INTRO_QUESTIONS = [
     {
@@ -125,16 +210,15 @@ def render_classification_lab():
     algo_info = algorithm_overview(algorithm_key)
     dataset_info = dataset_overview(dataset_key)
 
-    if st.button("🏠 返回首页", key="cls_back_home", use_container_width=False):
-        st.session_state.current_page = "home"
-        st.rerun()
-    st.markdown("---")
+    render_page_header(
+        title="分类算法可视化学习实验室",
+        module="机器学习 / 分类",
+        description="先选算法，再切换专属教学数据，再观察图像、参数和结论如何一起变化。",
+        back_key="cls_back_home",
+    )
     st.markdown(
         """
         <div class="lab-hero">
-            <div class="lab-overline">机器学习 · 分类</div>
-            <div class="lab-title">分类算法可视化学习实验室</div>
-            <div class="lab-subtitle">先选算法，再切换专属教学数据，再观察图像、参数和结论如何一起变化。</div>
             <div class="lab-badges">
                 <span class="lab-badge">当前算法：{0}</span>
                 <span class="lab-badge">当前数据：{1}</span>
@@ -153,6 +237,31 @@ def render_classification_lab():
         unsafe_allow_html=True,
     )
 
+    render_learning_goals(
+        [
+            "理解分类模型如何依据特征学习类别边界。",
+            "比较 KNN、SVM、朴素贝叶斯和随机森林的边界表达方式。",
+            "结合测试准确率、错分样本与图形观察模型泛化表现。",
+            "练习通过单个参数变化提出可验证的实验假设。",
+        ]
+    )
+    render_experiment_guide(
+        [
+            "先确认当前算法和教学数据，再记录你对边界形状的预期。",
+            "从“标准示例”开始，只改变一个参数并观察决策边界。",
+            "切换数据或增加噪声，比较训练准确率与测试准确率。",
+            "最后结合混淆矩阵和错分样本写下自己的结论。",
+        ]
+    )
+    preset_name = render_preset_controls(
+        CLASSIFICATION_PRESETS,
+        key="cls_teaching_preset",
+        reset_key="cls_teaching_reset",
+        on_preset_change=_apply_classification_preset,
+        on_reset=_reset_classification_defaults,
+    )
+    preset_values = _classification_preset_values(algorithm_key, preset_name)
+
     with st.expander("分类基础知识", expanded=False):
         for index, (title, body) in enumerate(classification_basics_sections()):
             st.markdown("**{0}. {1}**".format(index + 1, title))
@@ -164,7 +273,7 @@ def render_classification_lab():
 
     control_col, display_col = st.columns([0.84, 2.96], gap="medium")
     with control_col:
-        settings = render_control_panel(algorithm_key)
+        settings = render_control_panel(algorithm_key, preset_values=preset_values)
 
     lab_result = build_lab_result(
         algorithm_key=algorithm_key,
@@ -179,6 +288,14 @@ def render_classification_lab():
         render_display_panel(algorithm_key, settings["params"], lab_result)
 
     st.markdown("<div style='height: 0.35rem;'></div>", unsafe_allow_html=True)
+    render_parameter_explanation(
+        build_classification_parameter_explanations(
+            settings["algorithm_key"], settings["params"], settings["noise"], settings["test_size"]
+        )
+    )
+    render_observation(build_classification_observation(lab_result))
+    if settings.get("compare_enabled", False):
+        render_classification_comparison(lab_result, settings["compare_algorithm"])
     render_bottom_panel(algorithm_key, settings["params"], lab_result)
 
 
@@ -484,7 +601,8 @@ def inject_page_css():
     )
 
 
-def render_control_panel(algorithm_key):
+def render_control_panel(algorithm_key, preset_values=None):
+    preset_values = preset_values or {}
     st.markdown("### 操作区")
     algorithm_key = st.radio(
         "选择算法",
@@ -509,13 +627,27 @@ def render_control_panel(algorithm_key):
         st.session_state["cls_lab_view_nonce"] += 1
 
     with st.expander("数据设置", expanded=True):
-        sample_count = st.slider("样本数量", 120, 320, 220, 20)
-        noise = st.slider("噪声强度", 0.00, 0.50, default_noise(algorithm_key), 0.02)
-        test_size = st.slider("测试集比例", 0.20, 0.40, 0.28, 0.02)
+        sample_count = st.slider("样本数量", 120, 320, int(preset_values.get("sample_count", 220)), 20)
+        noise = st.slider("噪声强度", 0.00, 0.50, float(preset_values.get("noise", default_noise(algorithm_key))), 0.02)
+        test_size = st.slider("测试集比例", 0.20, 0.40, float(preset_values.get("test_size", 0.28)), 0.02)
         st.caption(get_dataset_summary(dataset_key))
 
     with st.expander("算法参数", expanded=True):
-        params = render_parameter_controls(algorithm_key)
+        params = render_parameter_controls(algorithm_key, preset_values=preset_values)
+
+    compare_enabled = st.checkbox("启用基础算法对比模式", key="cls_compare_enabled")
+    compare_options = [key for key in ALGORITHM_LABELS if key != algorithm_key]
+    if st.session_state.get("cls_compare_algorithm") not in compare_options:
+        st.session_state["cls_compare_algorithm"] = compare_options[0]
+    if compare_enabled:
+        compare_algorithm = st.selectbox(
+            "选择对比算法",
+            options=compare_options,
+            format_func=lambda key: ALGORITHM_LABELS[key],
+            key="cls_compare_algorithm",
+        )
+    else:
+        compare_algorithm = st.session_state.get("cls_compare_algorithm", compare_options[0])
 
     algo_info = algorithm_overview(algorithm_key)
     st.markdown("#### 当前算法提醒")
@@ -528,37 +660,42 @@ def render_control_panel(algorithm_key):
         "noise": noise,
         "test_size": test_size,
         "params": params,
+        "compare_enabled": compare_enabled,
+        "compare_algorithm": compare_algorithm,
     }
 
 
-def render_parameter_controls(algorithm_key):
+def render_parameter_controls(algorithm_key, preset_values=None):
+    preset_values = preset_values or {}
     if algorithm_key == "knn":
         return {
-            "n_neighbors": st.slider("邻居数量", 1, 25, 5, 1),
+            "n_neighbors": st.slider("邻居数量", 1, 25, int(preset_values.get("n_neighbors", 5)), 1),
             "weight_mode": st.selectbox(
                 "投票方式",
                 options=["uniform", "distance"],
                 format_func=lambda mode: "均匀投票" if mode == "uniform" else "距离加权",
+                index=["uniform", "distance"].index(preset_values.get("weight_mode", "uniform")),
             ),
         }
     if algorithm_key == "svm":
         return {
-            "C": st.slider("惩罚系数 C", 0.1, 8.0, 1.2, 0.1),
+            "C": st.slider("惩罚系数 C", 0.1, 8.0, float(preset_values.get("C", 1.2)), 0.1),
             "kernel": st.selectbox(
                 "核函数",
                 options=["linear", "rbf", "poly"],
                 format_func=lambda item: {"linear": "线性核", "rbf": "RBF 核", "poly": "多项式核"}[item],
+                index=["linear", "rbf", "poly"].index(preset_values.get("kernel", "linear")),
             ),
-            "gamma": st.slider("核函数影响范围", 0.1, 4.0, 1.0, 0.1),
+            "gamma": st.slider("核函数影响范围", 0.1, 4.0, float(preset_values.get("gamma", 1.0)), 0.1),
         }
     if algorithm_key == "nb":
         return {
-            "alpha": st.slider("平滑参数", 0.001, 1.000, 0.060, 0.001),
+            "alpha": st.slider("平滑参数", 0.001, 1.000, float(preset_values.get("alpha", 0.060)), 0.001),
         }
     return {
-        "n_estimators": st.slider("树的数量", 3, 31, 11, 2),
-        "max_depth": st.slider("最大深度", 1, 10, 4, 1),
-        "min_samples_split": st.slider("分裂所需最少样本数", 2, 20, 4, 1),
+        "n_estimators": st.slider("树的数量", 3, 31, int(preset_values.get("n_estimators", 11)), 2),
+        "max_depth": st.slider("最大深度", 1, 10, int(preset_values.get("max_depth", 4)), 1),
+        "min_samples_split": st.slider("分裂所需最少样本数", 2, 20, int(preset_values.get("min_samples_split", 4)), 1),
     }
 
 
@@ -570,6 +707,115 @@ def default_noise(algorithm_key):
         "rf": 0.14,
     }
     return mapping[algorithm_key]
+
+
+def build_classification_parameter_explanations(algorithm_key, params, noise, test_size):
+    """Create cautious, rule-based explanations for the current controls."""
+    explanations = [
+        "噪声强度为 {0:.2f}：噪声越高，边界附近出现错分的可能性通常越大，建议结合混淆矩阵观察。".format(noise),
+        "测试集比例为 {0:.0%}：它决定用于检验泛化表现的样本占比，不代表模型本身的复杂度。".format(test_size),
+    ]
+    if algorithm_key == "knn":
+        k_value = int(params["n_neighbors"])
+        if k_value <= 3:
+            explanations.append("K={0} 较小：模型更关注局部邻域，决策边界可能更复杂，也可能更容易受噪声影响。".format(k_value))
+        elif k_value >= 12:
+            explanations.append("K={0} 较大：决策边界通常更平滑，但可能损失局部细节。".format(k_value))
+        else:
+            explanations.append("K={0} 处于中间范围：建议逐步改变 K，观察局部细节与整体平滑度的平衡。".format(k_value))
+        if params["weight_mode"] == "distance":
+            explanations.append("距离加权会让近邻贡献更突出，建议观察边界附近样本是否随距离变化。")
+        else:
+            explanations.append("均匀投票让邻居拥有相同票权，建议观察 K 变化带来的平滑程度。")
+    elif algorithm_key == "svm":
+        c_value = float(params["C"])
+        gamma_value = float(params["gamma"])
+        explanations.append("C={0:.1f}：C 较大时通常更重视训练样本的分类结果，边界可能更贴近训练数据。".format(c_value))
+        explanations.append("gamma={0:.1f}：gamma 较大时单个样本的影响范围可能更局部，建议观察边界是否变得曲折。".format(gamma_value))
+        explanations.append("当前核函数为 {0}，建议结合边界形状比较线性与非线性表达差异。".format(params["kernel"]))
+    elif algorithm_key == "nb":
+        alpha_value = float(params["alpha"])
+        explanations.append("平滑参数 alpha={0:.3f}：数值越大通常会减弱极少数特征统计的极端影响，建议观察概率边界的稳定性。".format(alpha_value))
+    else:
+        depth = int(params["max_depth"])
+        estimators = int(params["n_estimators"])
+        split = int(params["min_samples_split"])
+        explanations.append("树数量={0}：增加树的数量通常会让集成结果更稳定，但计算量也会增加。".format(estimators))
+        explanations.append("最大深度={0}、最小分裂样本={1}：更深且更容易分裂的树可能刻画更多局部细节。".format(depth, split))
+    return explanations
+
+
+def build_classification_observation(lab_result):
+    train_acc = float(lab_result["train_acc"])
+    test_acc = float(lab_result["test_acc"])
+    gap = abs(train_acc - test_acc)
+    observation = [
+        "当前训练准确率 {0:.1%}，测试准确率 {1:.1%}，两者差距 {2:.1%}。".format(train_acc, test_acc, gap),
+        "建议观察图中的决策边界是否覆盖了错分样本，并逐次只调整一个参数。",
+    ]
+    if gap >= 0.15:
+        observation.append("训练/测试差距相对明显，可能存在泛化不稳定现象，建议降低模型复杂度或检查噪声影响。")
+    else:
+        observation.append("当前训练/测试差距不大，可继续比较不同数据集下边界形状与错分位置。")
+    return observation
+
+
+def build_classification_comparison(primary_result, compare_algorithm):
+    """Fit a second existing classifier on the primary run's exact split."""
+    params = _classification_preset_values(compare_algorithm, "标准示例")
+    scaler = primary_result["scaler"]
+    X_train = primary_result["X_train"]
+    X_test = primary_result["X_test"]
+    X_train_scaled = scaler.transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    model = build_classifier(compare_algorithm, params)
+    model.fit(X_train_scaled, primary_result["y_train"])
+    y_train_pred = model.predict(X_train_scaled)
+    y_test_pred = model.predict(X_test_scaled)
+    extras = build_algorithm_extras(
+        algorithm_key=compare_algorithm,
+        model=model,
+        scaler=scaler,
+        X_train=X_train,
+        X_train_scaled=X_train_scaled,
+        y_train=primary_result["y_train"],
+        X_test=X_test,
+        X_test_scaled=X_test_scaled,
+        y_test=primary_result["y_test"],
+        y_test_pred=y_test_pred,
+    )
+    context = {
+        "model": model,
+        "scaler": scaler,
+        "X_train": X_train,
+        "y_train": primary_result["y_train"],
+        "X_test": X_test,
+        "y_test": primary_result["y_test"],
+        "y_test_pred": y_test_pred,
+        "visual_title": ALGORITHM_LABELS[compare_algorithm],
+    }
+    context.update(extras)
+    return {
+        "algorithm_key": compare_algorithm,
+        "params": params,
+        "visual_context": context,
+        "train_acc": accuracy_score(primary_result["y_train"], y_train_pred),
+        "test_acc": accuracy_score(primary_result["y_test"], y_test_pred),
+    }
+
+
+def render_classification_comparison(primary_result, compare_algorithm):
+    comparison = build_classification_comparison(primary_result, compare_algorithm)
+    st.markdown("### 基础算法对比")
+    st.caption("两种算法复用同一数据集、同一 train/test split 和当前页面随机种子；对比算法使用原始默认参数。")
+    columns = st.columns(2, gap="medium")
+    entries = [(primary_result["algorithm_key"], primary_result), (compare_algorithm, comparison)]
+    for column, (algorithm_key, result) in zip(columns, entries):
+        with column:
+            st.markdown("#### {0}".format(ALGORITHM_LABELS[algorithm_key]))
+            visual = render_main_visual(algorithm_key, result["visual_context"])
+            render_visual_output(visual, "对比主图未成功生成，请稍后重试。")
+            st.metric("测试准确率", "{0:.1%}".format(float(result["test_acc"])))
 
 
 def build_lab_result(algorithm_key, dataset_key, sample_count, noise, test_size, params):

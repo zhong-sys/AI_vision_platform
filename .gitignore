@@ -1,16 +1,42 @@
 # Python-generated files
 __pycache__/
-*.py[oc]
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# IDE and editor metadata
+.idea/
+.vscode/
+*.iml
+*.code-workspace
+
+# Logs and local runtime output
+*.log
+logs/
+*.out
+*.pid
+
+# Build and packaging artifacts
 build/
 dist/
 wheels/
-*.egg-info
-
-# Virtual environments
-.venv
-
-# Secrets
-.streamlit/secrets.toml
-
-# Build artifacts
+*.egg-info/
 dist.zip
+
+# Local archive (kept outside the source tree for reference only)
+/.local_archive/
+/agent.md
+/CLAUDE.md
+
+# Secrets and local environment files
+.streamlit/secrets.toml
+.env
+.env.*
+!.env.example

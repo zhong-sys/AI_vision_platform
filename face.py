@@ -1,15 +1,6 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import os
-import sys
-
-def resource_path(relative_path):
-    """获取资源文件的绝对路径，兼容打包后的exe环境"""
-    if hasattr(sys, '_MEIPASS'):
-        # 打包后，临时文件被解压在 sys._MEIPASS 中
-        return os.path.join(sys._MEIPASS, relative_path)
-    # 开发环境
-    return os.path.join(os.path.abspath("."), relative_path)
+from utils.helpers import resource_path
 
 # ==================== 页面配置 ====================
 st.set_page_config(

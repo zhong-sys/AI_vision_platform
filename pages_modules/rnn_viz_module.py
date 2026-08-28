@@ -12,6 +12,14 @@ import numpy as np
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
 
+from components.experiment_panel import (
+    render_experiment_guide,
+    render_learning_goals,
+    render_observation,
+    render_parameter_explanation,
+)
+from components.page_header import render_page_header
+
 
 _BG = (15, 15, 15)
 _EDGE = (85, 85, 85)
@@ -292,6 +300,12 @@ def _render_step_with_nav(label: str, min_step: int, max_step: int, key: str, de
     slider_val = st.slider(label, min_step, max_step, step=1, key=slider_key)
     st.session_state[state_key] = int(slider_val)
     return st.session_state[state_key]
+
+
+def _reset_rnn_teaching_steps():
+    """Restore only the two existing RNN navigation controls."""
+    for key in ("rnn_step_state", "rnn_step_slider", "rnn_calc_step_state", "rnn_calc_step_slider"):
+        st.session_state[key] = 1
 
 
 def _draw_matrix_heatmap(mat: np.ndarray, title: str, row_labels: list, col_labels: list) -> Image.Image:
@@ -653,8 +667,34 @@ def draw_cnn_vs_rnn() -> Image.Image:
 
 def nv_render_rnn_viz():
     """渲染 RNN 教学页面。"""
-    st.title("循环神经网络 (RNN)")
-    st.caption("给神经网络装上短期记忆，让它能理解序列中的先后关系")
+    render_page_header(
+        title="循环神经网络 (RNN)",
+        module="神经网络 / RNN",
+        description="给神经网络装上短期记忆，让它能理解序列中的先后关系",
+    )
+
+    render_learning_goals(
+        [
+            "理解隐藏状态如何在相邻时间步之间传递。",
+            "区分输入贡献、记忆贡献和 tanh 激活三个计算阶段。",
+            "观察同一组参数在不同时间步上的复用方式。",
+            "比较 RNN 与 CNN 在信息结构上的差异。",
+        ]
+    )
+    render_experiment_guide(
+        [
+            "先拖动时间步滑块，观察当前节点与未来节点的状态。",
+            "再选择一个时间步，按五个阶段阅读数值演算。",
+            "对照 Wxh 与 Whh 热图，区分输入和历史记忆的贡献。",
+            "最后联系 CNN 对比图，总结空间建模与时间建模的差异。",
+        ]
+    )
+    st.button(
+        "恢复默认参数",
+        key="rnn_teaching_reset",
+        on_click=_reset_rnn_teaching_steps,
+        use_container_width=False,
+    )
 
     st.subheader("为什么需要它？")
     st.info(
@@ -810,3 +850,16 @@ def nv_render_rnn_viz():
             "- **共享方式差异**：CNN 在空间重复同一个卷积核，RNN 在时间重复同一组递推参数。  \n"
             "- **挑战差异**：CNN 多关注空间尺度变化，RNN 在长序列上更容易出现梯度消失或爆炸。"
         )
+
+    render_parameter_explanation(
+        [
+            "当前展开时间步为 t={0}，数值演算时间步为 t={1}；拖动任一滑块可观察对应阶段。".format(step, calc_step),
+            "Wxh 负责输入贡献，Whh 负责历史隐藏状态贡献；建议分别查看两张权重热图。",
+        ]
+    )
+    render_observation(
+        [
+            "当前 h_t 已由固定演示序列计算得到，页面没有额外训练参数。",
+            "建议比较相邻时间步的 h_t，观察记忆传递带来的数值变化。",
+        ]
+    )

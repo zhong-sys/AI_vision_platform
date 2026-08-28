@@ -10,6 +10,7 @@ NeuralVis 神经网络可视化训练模块
 - render_neural_network_viz : Streamlit 主渲染入口
 """
 
+import logging
 import os
 import time
 
@@ -19,6 +20,93 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
+
+from components.experiment_panel import (
+    render_experiment_guide,
+    render_learning_goals,
+    render_observation,
+    render_parameter_explanation,
+    render_preset_controls,
+)
+from components.page_header import render_page_header
+
+
+LOGGER = logging.getLogger(__name__)
+
+
+NN_PRESETS = {
+    "标准示例": "保持基础网络页面原始默认结构，适合第一次逐步训练。",
+    "典型现象": "增加一个输出类别，观察网络结构与训练曲线的变化。",
+    "极端参数": "使用更深的网络与更大的学习率，观察训练过程是否稳定。",
+    "快速观察": "缩小网络和训练轮数，快速完成一次前向/反向过程。",
+}
+
+
+def _nn_preset_values(preset_name):
+    values = {
+        "nv_input_size": 2,
+        "nv_n_hidden": 2,
+        "nv_hidden_0": 8,
+        "nv_hidden_1": 8,
+        "nv_hidden_2": 4,
+        "nv_hidden_3": 4,
+        "nv_output_size": 1,
+        "nv_activation_display": "ReLU",
+        "nv_loss_display": "交叉熵",
+        "nv_lr": 0.01,
+        "nv_max_epochs": 100,
+    }
+    if preset_name == "典型现象":
+        values.update({"nv_output_size": 2, "nv_hidden_0": 8, "nv_hidden_1": 12, "nv_max_epochs": 120})
+    elif preset_name == "极端参数":
+        values.update({
+            "nv_input_size": 4,
+            "nv_n_hidden": 3,
+            "nv_hidden_0": 16,
+            "nv_hidden_1": 12,
+            "nv_hidden_2": 8,
+            "nv_output_size": 3,
+            "nv_activation_display": "Tanh",
+            "nv_loss_display": "MSE",
+            "nv_lr": 0.1,
+            "nv_max_epochs": 200,
+        })
+    elif preset_name == "快速观察":
+        values.update({
+            "nv_n_hidden": 1,
+            "nv_hidden_0": 4,
+            "nv_output_size": 1,
+            "nv_activation_display": "Sigmoid",
+            "nv_loss_display": "MSE",
+            "nv_lr": 0.001,
+            "nv_max_epochs": 30,
+        })
+    return values
+
+
+def _apply_nn_preset():
+    preset_name = st.session_state.get("nv_teaching_preset", "标准示例")
+    for key, value in _nn_preset_values(preset_name).items():
+        st.session_state[key] = value
+
+
+def _reset_nn_defaults():
+    for key, value in _nn_preset_values("标准示例").items():
+        st.session_state[key] = value
+    st.session_state["nv_teaching_preset"] = "标准示例"
+    st.session_state.nv_trainer = None
+    st.session_state.nv_history = {"loss": [], "acc": [], "epoch": []}
+    st.session_state.nv_logs = []
+    st.session_state.nv_training = False
+    st.session_state.nv_network_built = False
+    st.session_state.nv_layer_sizes = None
+    st.session_state.nv_target_epochs = 100
+    st.session_state.nv_last_info = None
+    st.session_state.nv_anim_phase = None
+    st.session_state.nv_anim_info = None
+    st.session_state.nv_viz_mode = "weights"
+    st.session_state.nv_auto_training = False
+
 
 # ==================== 跨平台中文字体设置 ====================
 import matplotlib.font_manager as _fm
@@ -711,6 +799,37 @@ def _init_session_state():
             st.session_state[key] = val
 
 
+def _nn_parameter_explanations(input_size, n_hidden, hidden_layers, output_size, activation_display, loss_display, lr, max_epochs):
+    explanations = [
+        "网络结构为 {0}→{1}→{2}：层数或神经元数量增加时，表达能力可能增强，同时结构也更复杂。".format(
+            input_size, ",".join(str(item) for item in hidden_layers), output_size
+        ),
+        "激活函数为 {0}、损失函数为 {1}：建议保持其他参数不变，观察单步传播中的数值变化。".format(
+            activation_display, loss_display
+        ),
+        "学习率为 {0}、最大训练轮数为 {1}：学习率较大时每次更新步幅可能更明显，轮数增加提供更多观察机会。".format(
+            lr, max_epochs
+        ),
+    ]
+    if n_hidden >= 3:
+        explanations.append("当前隐藏层数量较多，建议重点观察训练曲线是否平滑以及单步梯度变化。")
+    elif n_hidden == 1:
+        explanations.append("当前只有一个隐藏层，结构较简洁，适合先理解前向传播和反向传播的基本路径。")
+    return explanations
+
+
+def _nn_observation():
+    history = st.session_state.get("nv_history", {})
+    losses = history.get("loss", []) if isinstance(history, dict) else []
+    accs = history.get("acc", []) if isinstance(history, dict) else []
+    if losses:
+        text = "已完成 {0} 个训练步，最新损失为 {1:.6f}".format(len(losses), float(losses[-1]))
+        if accs:
+            text += "，准确率为 {0:.3f}".format(float(accs[-1]))
+        return [text + "。", "建议再执行一次单步训练，比较损失和权重视图的变化。"]
+    return ["当前尚未产生训练指标。", "建议先构建网络，再执行单步或自动训练，观察前向、反向与权重更新三个阶段。"]
+
+
 # =============================================================================
 # 5. Streamlit 渲染函数（主入口）
 # =============================================================================
@@ -719,15 +838,35 @@ def render_neural_network_viz():
     """渲染完整的神经网络可视化训练界面。主入口函数。"""
     _init_session_state()
 
-    # 页面标题与说明
-    st.markdown("""
-    <div style="margin-bottom: 8px;">
-        <span style="font-size: 22px; font-weight: bold; color: #0F5B9E;">🧬 基础神经网络可视化训练</span>
-    </div>
-    <div style="color: #555; font-size: 16px; margin-bottom: 16px;">
-        通过调整网络结构、激活函数与损失函数，观察神经网络前向传播、反向传播与权重更新的完整过程。
-    </div>
-    """, unsafe_allow_html=True)
+    render_page_header(
+        title="🧬 基础神经网络可视化训练",
+        module="神经网络 / 基础网络",
+        description="通过调整网络结构、激活函数与损失函数，观察神经网络前向传播、反向传播与权重更新的完整过程。",
+    )
+
+    render_learning_goals(
+        [
+            "理解输入层、隐藏层和输出层之间的信息流。",
+            "观察前向传播、损失计算、反向传播和权重更新的顺序。",
+            "比较激活函数、学习率和网络深度带来的训练现象。",
+            "学会用训练曲线和单步日志描述当前实验。",
+        ]
+    )
+    render_experiment_guide(
+        [
+            "从“标准示例”开始构建网络，先查看拓扑结构。",
+            "执行一次单步训练，按前向、反向、更新顺序阅读日志。",
+            "只改变一个结构或训练参数，再比较损失和准确率。",
+            "最后用自动训练观察曲线，并记录可能的稳定性差异。",
+        ]
+    )
+    render_preset_controls(
+        NN_PRESETS,
+        key="nv_teaching_preset",
+        reset_key="nv_teaching_reset",
+        on_preset_change=_apply_nn_preset,
+        on_reset=_reset_nn_defaults,
+    )
 
     # ---- 自动训练 ----
     if st.session_state.nv_auto_training and st.session_state.nv_trainer is not None:
@@ -865,8 +1004,9 @@ def render_neural_network_viz():
                     fig = plot_training_curves(st.session_state.nv_history)
                     st.pyplot(fig)
                     plt.close(fig)
-                except Exception as e:
-                    st.error(f"绘制训练曲线时出错: {e}")
+                except Exception:
+                    LOGGER.exception("Failed to render neural-network training curves")
+                    st.error("绘制训练曲线时出错，请稍后重试。")
             else:
                 st.info("开始训练后将在此显示损失值与准确率的变化曲线。")
 
@@ -964,8 +1104,9 @@ def render_neural_network_viz():
                         • <b>纯拓扑</b>：仅显示网络结构，不带数值映射
                         </div>
                         """, unsafe_allow_html=True)
-                except Exception as e:
-                    st.error(f"绘制网络结构时出错: {e}")
+                except Exception:
+                    LOGGER.exception("Failed to render neural-network structure")
+                    st.error("绘制网络结构时出错，请稍后重试。")
             else:
                 st.info("构建网络后将在此显示神经网络拓扑结构，并支持切换前向/反向/权重视图。")
 
@@ -1016,6 +1157,20 @@ def render_neural_network_viz():
                 st.caption("暂无日志，构建网络并开始训练后将在此显示。")
 
     # 三阶段单步动画：每次渲染一帧，等待后切换到下一帧
+    render_parameter_explanation(
+        _nn_parameter_explanations(
+            input_size,
+            n_hidden,
+            hidden_layers,
+            output_size,
+            activation_display,
+            loss_display,
+            lr,
+            max_epochs,
+        )
+    )
+    render_observation(_nn_observation())
+
     if st.session_state.nv_anim_phase is not None:
         time.sleep(2.0)
         if st.session_state.nv_anim_phase < 2:
@@ -1058,8 +1213,9 @@ def _do_single_step():
 
         return info
 
-    except Exception as e:
-        st.error(f"单步训练时发生错误: {e}")
+    except Exception:
+        LOGGER.exception("Neural-network single-step training failed")
+        st.error("单步训练时发生错误，请稍后重试。")
         return None
 
 
@@ -1107,5 +1263,6 @@ def _execute_auto_training():
         status_text.text(f"✅ 训练完成！共 {target_epochs} 轮，最终 Loss: {hist['loss'][-1]:.6f}")
         time.sleep(0.3)
 
-    except Exception as e:
-        st.error(f"自动训练过程中发生错误: {e}")
+    except Exception:
+        LOGGER.exception("Neural-network automatic training failed")
+        st.error("自动训练过程中发生错误，请稍后重试。")

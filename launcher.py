@@ -1,15 +1,16 @@
 # launcher.py
+import logging
 import os
 import sys
 import time
 import threading
 import webbrowser
 
-def resource_path(relative_path):
-    """获取资源路径，兼容 PyInstaller 打包后的 exe 环境"""
-    if hasattr(sys, '_MEIPASS'):
-        return os.path.join(sys._MEIPASS, relative_path)
-    return os.path.join(os.path.abspath("."), relative_path)
+from utils.helpers import resource_path
+
+
+LOGGER = logging.getLogger(__name__)
+
 
 def main():
     # 定位主程序文件（你的主程序是 main.py）
@@ -61,8 +62,9 @@ def main():
         st_main()
     except SystemExit:
         pass
-    except Exception as e:
-        print(f"\n错误：启动服务时发生异常: {e}")
+    except Exception:
+        LOGGER.exception("Streamlit service failed to start")
+        print("\n错误：启动服务时发生异常，请查看服务日志。")
         time.sleep(5)
         sys.exit(1)
 

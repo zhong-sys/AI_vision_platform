@@ -1,4 +1,5 @@
 # pages_modules/llm.py
+import logging
 import streamlit as st
 from openai import OpenAI
 import config
@@ -6,6 +7,18 @@ from utils.helpers import resource_path
 import os
 import time
 from threading import BoundedSemaphore
+
+from components.experiment_panel import (
+    render_experiment_guide,
+    render_learning_goals,
+    render_observation,
+    render_parameter_explanation,
+)
+from components.page_header import render_page_header
+
+
+LOGGER = logging.getLogger(__name__)
+
 
 # ==================== 模型介绍信息库（保持不变） ====================
 MODEL_INTROS = {
@@ -130,12 +143,29 @@ def _request_with_retry(client: OpenAI, model: str, messages, temperature: float
 
 def show(model_preselected: str = None):
     """国产大模型对话页面（控件移至主界面）"""
-    st.title("🤖 国产大模型体验区")
-    st.markdown("了解模型背景，然后输入问题，体验国产AI的能力。")
-    if st.button("🏠 返回首页", key="llm_back_home_top", use_container_width=False):
-        st.session_state.current_page = "home"
-        st.rerun()
-    st.markdown("---")
+    render_page_header(
+        title="🤖 国产大模型体验区",
+        module="大模型 / 对话体验",
+        description="了解模型背景，然后输入问题，体验国产AI的能力。",
+        back_key="llm_back_home_top",
+    )
+
+    render_learning_goals(
+        [
+            "了解不同国产大模型的定位、能力侧重点和适用场景。",
+            "理解 Temperature 与 Max Tokens 对对话输出的影响方向。",
+            "练习用清晰问题描述任务，并比较不同模型的回答风格。",
+            "掌握 API Key 缺失或服务不可用时的安全提示边界。",
+        ]
+    )
+    render_experiment_guide(
+        [
+            "先阅读当前模型介绍，再写下问题目标和期望输出格式。",
+            "保持问题不变，只调整 Temperature 或 Max Tokens 做对照。",
+            "比较回答的稳定性、长度和任务完成度，记录可复现观察。",
+            "实验结束后清空对话，避免把无关上下文带入下一轮。",
+        ]
+    )
 
 
     # 初始化会话状态
@@ -166,6 +196,20 @@ def show(model_preselected: str = None):
             if st.button("🧹 清空对话", use_container_width=True):
                 st.session_state.llm_messages = []
                 st.rerun()
+
+    render_parameter_explanation(
+        [
+            "Temperature={0:.1f}：数值较低时输出通常更稳定，数值较高时表达可能更丰富。".format(temperature),
+            "Max Tokens={0}：限制单次回复的最大长度，实际输出仍取决于问题和模型。".format(max_tokens),
+            "当前模型为 {0}，建议保持问题不变再做单变量对照。".format(model_choice),
+        ]
+    )
+    render_observation(
+        [
+            "对话状态保存在当前会话中，不会新增持久化存储。",
+            "建议记录可复现的问题与参数；若服务不可用，请根据页面提示稍后重试。",
+        ]
+    )
 
     # ==================== 模型介绍区域（可折叠） ====================
     intro = MODEL_INTROS.get(model_choice, MODEL_INTROS["智谱GLM"])
@@ -249,8 +293,9 @@ def show(model_preselected: str = None):
                     message_placeholder.markdown(full_response + "▌")
                 message_placeholder.markdown(full_response)
                 st.session_state.llm_messages.append({"role": "assistant", "content": full_response})
-            except Exception as e:
-                st.error(f"调用模型时出错: {e}")
+            except Exception:
+                LOGGER.exception("LLM request failed for provider %s", model_choice)
+                st.error("调用模型时出错，请稍后重试。")
             finally:
                 if 'acquired' in locals() and acquired:
                     LLM_REQUEST_SEMAPHORE.release()

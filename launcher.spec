@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('assets', 'assets'), ('.streamlit', '.streamlit'), ('pages_modules', 'pages_modules'), ('utils', 'utils'), ('config.py', '.'), ('main.py', '.')]
+datas = [('assets', 'assets'), ('.streamlit', '.streamlit'), ('components', 'components'), ('pages_modules', 'pages_modules'), ('utils', 'utils'), ('config.py', '.'), ('app_constants.py', '.'), ('router.py', '.'), ('main.py', '.')]
 binaries = []
 hiddenimports = ['streamlit.web.cli']
 tmp_ret = collect_all('streamlit')

@@ -4,6 +4,15 @@ import streamlit as st
 import numpy as np
 from PIL import Image
 
+from components.experiment_panel import (
+    render_experiment_guide,
+    render_learning_goals,
+    render_observation,
+    render_parameter_explanation,
+    render_preset_controls,
+)
+from components.page_header import render_page_header
+
 try:
     from matplotlib.figure import Figure
 except Exception:
@@ -42,6 +51,97 @@ STATE_DEFAULTS = {
     "regression_intro_game_submitted": False,
     "regression_intro_game_answer": 80.0,
 }
+
+
+REGRESSION_PRESETS = {
+    "标准示例": "保持当前算法原始控件默认值，适合先熟悉拟合曲线。",
+    "典型现象": "适度增加模型表达能力，观察拟合与泛化之间的平衡。",
+    "极端参数": "将复杂度或正则化推向边界，观察曲线可能出现的变化。",
+    "高噪声/复杂情况": "增加噪声与样本量，练习从残差和指标中判断稳定性。",
+}
+
+
+def _regression_preset_values(algorithm_key, preset_name):
+    """Return only existing regression-control values for a teaching preset."""
+    values = {
+        "dataset_key": get_default_dataset(algorithm_key),
+        "sample_count": 180,
+        "noise": default_noise(algorithm_key),
+        "test_size": 0.30,
+        "fit_intercept": True,
+        "standardize": True,
+        "degree": 4,
+        "alpha": 1.20,
+        "C": 1.4,
+        "epsilon": 0.22,
+        "kernel": "linear",
+        "gamma": 0.80,
+        "max_depth": 4,
+        "min_samples_split": 6,
+        "n_estimators": 21,
+    }
+    if algorithm_key == "lasso":
+        values["alpha"] = 0.12
+    elif algorithm_key == "rf":
+        values.update({"max_depth": 5, "min_samples_split": 6, "n_estimators": 21})
+
+    if preset_name == "典型现象":
+        values.update({"sample_count": 220, "noise": min(0.28, 0.80)})
+        if algorithm_key == "poly":
+            values["degree"] = 6
+        elif algorithm_key in ("ridge", "lasso"):
+            values["alpha"] = 0.60 if algorithm_key == "ridge" else 0.20
+        elif algorithm_key == "svr":
+            values.update({"C": 2.0, "epsilon": 0.15, "gamma": 1.20, "kernel": "rbf"})
+        elif algorithm_key == "tree":
+            values.update({"max_depth": 6, "min_samples_split": 4})
+        elif algorithm_key == "rf":
+            values.update({"n_estimators": 31, "max_depth": 6, "min_samples_split": 4})
+        else:
+            values.update({"fit_intercept": True, "standardize": True})
+    elif preset_name == "极端参数":
+        values.update({"sample_count": 140, "noise": 0.50, "test_size": 0.40})
+        if algorithm_key == "poly":
+            values["degree"] = 9
+        elif algorithm_key in ("ridge", "lasso"):
+            values["alpha"] = 4.0 if algorithm_key == "ridge" else 1.0
+        elif algorithm_key == "svr":
+            values.update({"C": 4.0, "epsilon": 0.05, "gamma": 2.50, "kernel": "poly"})
+        elif algorithm_key == "tree":
+            values.update({"max_depth": 10, "min_samples_split": 2})
+        elif algorithm_key == "rf":
+            values.update({"n_estimators": 41, "max_depth": 10, "min_samples_split": 2})
+        else:
+            values.update({"fit_intercept": False, "standardize": False})
+    elif preset_name == "高噪声/复杂情况":
+        values.update({"sample_count": 300, "noise": 0.72, "test_size": 0.35})
+        if algorithm_key == "poly":
+            values["degree"] = 3
+        elif algorithm_key in ("ridge", "lasso"):
+            values["alpha"] = 2.40 if algorithm_key == "ridge" else 0.50
+        elif algorithm_key == "svr":
+            values.update({"C": 0.6, "epsilon": 0.40, "gamma": 0.30, "kernel": "linear"})
+        elif algorithm_key == "tree":
+            values.update({"max_depth": 3, "min_samples_split": 12})
+        elif algorithm_key == "rf":
+            values.update({"n_estimators": 25, "max_depth": 4, "min_samples_split": 10})
+    return values
+
+
+def _apply_regression_preset():
+    preset_name = st.session_state.get("reg_teaching_preset", "标准示例")
+    algorithm_key = st.session_state.get("reg_lab_algorithm", "linear")
+    values = _regression_preset_values(algorithm_key, preset_name)
+    st.session_state["reg_lab_dataset"] = values["dataset_key"]
+
+
+def _reset_regression_defaults():
+    algorithm_key = st.session_state.get("reg_lab_algorithm", "linear")
+    values = _regression_preset_values(algorithm_key, "标准示例")
+    st.session_state["reg_teaching_preset"] = "标准示例"
+    st.session_state["reg_lab_dataset"] = values["dataset_key"]
+    st.session_state["reg_lab_seed"] = STATE_DEFAULTS["reg_lab_seed"]
+    st.session_state["reg_lab_view_nonce"] = STATE_DEFAULTS["reg_lab_view_nonce"]
 
 REGRESSION_INTRO_QUESTIONS = [
     {
@@ -190,18 +290,15 @@ def render_regression_lab():
     algo_info = algorithm_overview(algorithm_key)
     dataset_info = dataset_overview(dataset_key)
 
-    if st.button("🏠 返回首页", key="reg_back_home", use_container_width=False):
-        st.session_state.current_page = "home"
-        st.rerun()
-    st.markdown("---")
+    render_page_header(
+        title="回归算法可视化学习实验室",
+        module="机器学习 / 回归",
+        description="先选算法，再切换对应教学数据，随后观察拟合曲线、残差和误差指标如何一起变化。",
+        back_key="reg_back_home",
+    )
     st.markdown(
         """
         <div class="lab-hero">
-            <div class="lab-overline">机器学习 · 回归</div>
-            <div class="lab-title">回归算法可视化学习实验室</div>
-            <div class="lab-subtitle">
-                先选算法，再切换对应教学数据，随后观察拟合曲线、残差和误差指标如何一起变化。
-            </div>
             <div class="lab-badges">
                 <span class="lab-badge">当前算法：{0}</span>
                 <span class="lab-badge">当前数据：{1}</span>
@@ -215,6 +312,31 @@ def render_regression_lab():
         unsafe_allow_html=True,
     )
 
+    render_learning_goals(
+        [
+            "理解回归模型如何拟合连续数值及其整体趋势。",
+            "比较线性、曲线、正则化、支持向量和树模型的拟合方式。",
+            "结合 R²、误差和残差观察模型在测试集上的表现。",
+            "练习用单变量调参验证对曲线平滑度和泛化的判断。",
+        ]
+    )
+    render_experiment_guide(
+        [
+            "先确认数据趋势，并记录你对拟合曲线的预期。",
+            "从“标准示例”开始，只调整一个参数观察曲线变化。",
+            "切换到带噪声或非线性数据，比较训练与测试指标。",
+            "查看残差分布，判断模型是否遗漏了明显结构。",
+        ]
+    )
+    preset_name = render_preset_controls(
+        REGRESSION_PRESETS,
+        key="reg_teaching_preset",
+        reset_key="reg_teaching_reset",
+        on_preset_change=_apply_regression_preset,
+        on_reset=_reset_regression_defaults,
+    )
+    preset_values = _regression_preset_values(algorithm_key, preset_name)
+
     with st.expander("回归基础知识", expanded=False):
         for index, (title, body) in enumerate(regression_basics_sections()):
             st.markdown("**{0}. {1}**".format(index + 1, title))
@@ -226,7 +348,7 @@ def render_regression_lab():
 
     control_col, content_col = st.columns([0.84, 2.96], gap="medium")
     with control_col:
-        settings = render_control_panel(algorithm_key)
+        settings = render_control_panel(algorithm_key, preset_values=preset_values)
 
     lab_result = build_lab_result(
         algorithm_key=settings["algorithm_key"],
@@ -241,6 +363,14 @@ def render_regression_lab():
         render_display_panel(settings["algorithm_key"], settings["dataset_key"], settings["params"], lab_result)
 
     st.markdown("<div style='height: 0.35rem;'></div>", unsafe_allow_html=True)
+    render_parameter_explanation(
+        build_regression_parameter_explanations(
+            settings["algorithm_key"], settings["params"], settings["noise"], settings["test_size"]
+        )
+    )
+    render_observation(build_regression_observation(lab_result))
+    if settings.get("compare_enabled", False):
+        render_regression_comparison(lab_result, settings["compare_algorithm"])
     render_bottom_panel(settings["algorithm_key"], settings["dataset_key"], settings["params"], lab_result)
 
 
@@ -554,7 +684,8 @@ def inject_page_css():
     )
 
 
-def render_control_panel(algorithm_key):
+def render_control_panel(algorithm_key, preset_values=None):
+    preset_values = preset_values or {}
     st.markdown("### 操作区")
     algorithm_key = st.radio(
         "选择算法",
@@ -579,13 +710,36 @@ def render_control_panel(algorithm_key):
         st.session_state["reg_lab_view_nonce"] += 1
 
     with st.expander("数据设置", expanded=True):
-        sample_count = st.slider("样本数量", 100, 320, 180, 20)
-        noise = st.slider("噪声强度", 0.00, 0.80, default_noise(algorithm_key), 0.02)
-        test_size = st.slider("测试集比例", 0.20, 0.40, 0.30, 0.02)
+        sample_count = st.slider("样本数量", 100, 320, int(preset_values.get("sample_count", 180)), 20)
+        noise = st.slider("噪声强度", 0.00, 0.80, float(preset_values.get("noise", default_noise(algorithm_key))), 0.02)
+        test_size = st.slider("测试集比例", 0.20, 0.40, float(preset_values.get("test_size", 0.30)), 0.02)
         st.caption(get_dataset_summary(dataset_key))
 
     with st.expander("算法参数", expanded=True):
-        params = render_parameter_controls(algorithm_key)
+        params = render_parameter_controls(algorithm_key, preset_values=preset_values)
+
+    compare_enabled = st.checkbox("启用基础算法对比模式", key="reg_compare_enabled")
+    # PolynomialRegressionCustom is defined for one-dimensional x.  The
+    # regularized teaching datasets contain multiple features, so omit that
+    # incompatible choice while keeping every same-data compatible option.
+    multi_feature_dataset = dataset_key in {
+        "ridge_correlated", "ridge_dense_noise", "lasso_sparse_signal", "lasso_correlated_noise"
+    }
+    compare_options = [
+        key for key in ALGORITHM_LABELS
+        if key != algorithm_key and not (multi_feature_dataset and key == "poly")
+    ]
+    if st.session_state.get("reg_compare_algorithm") not in compare_options:
+        st.session_state["reg_compare_algorithm"] = compare_options[0]
+    if compare_enabled:
+        compare_algorithm = st.selectbox(
+            "选择对比算法",
+            options=compare_options,
+            format_func=lambda key: ALGORITHM_LABELS[key],
+            key="reg_compare_algorithm",
+        )
+    else:
+        compare_algorithm = st.session_state.get("reg_compare_algorithm", compare_options[0])
 
     algo_info = algorithm_overview(algorithm_key)
     st.markdown("#### 当前算法提醒")
@@ -598,41 +752,45 @@ def render_control_panel(algorithm_key):
         "noise": noise,
         "test_size": test_size,
         "params": params,
+        "compare_enabled": compare_enabled,
+        "compare_algorithm": compare_algorithm,
     }
 
 
-def render_parameter_controls(algorithm_key):
+def render_parameter_controls(algorithm_key, preset_values=None):
+    preset_values = preset_values or {}
     if algorithm_key == "linear":
         return {
-            "fit_intercept": st.checkbox("加入偏置项", value=True),
-            "standardize": st.checkbox("先标准化特征", value=True),
+            "fit_intercept": st.checkbox("加入偏置项", value=bool(preset_values.get("fit_intercept", True))),
+            "standardize": st.checkbox("先标准化特征", value=bool(preset_values.get("standardize", True))),
         }
     if algorithm_key == "poly":
-        return {"degree": st.slider("多项式阶数", 2, 9, 4, 1)}
+        return {"degree": st.slider("多项式阶数", 2, 9, int(preset_values.get("degree", 4)), 1)}
     if algorithm_key == "ridge":
-        return {"alpha": st.slider("正则化强度", 0.10, 4.00, 1.20, 0.05)}
+        return {"alpha": st.slider("正则化强度", 0.10, 4.00, float(preset_values.get("alpha", 1.20)), 0.05)}
     if algorithm_key == "lasso":
-        return {"alpha": st.slider("正则化强度", 0.01, 1.00, 0.12, 0.01)}
+        return {"alpha": st.slider("正则化强度", 0.01, 1.00, float(preset_values.get("alpha", 0.12)), 0.01)}
     if algorithm_key == "svr":
         return {
-            "C": st.slider("惩罚系数 C", 0.2, 4.0, 1.4, 0.1),
-            "epsilon": st.slider("容忍带宽度", 0.05, 0.60, 0.22, 0.01),
+            "C": st.slider("惩罚系数 C", 0.2, 4.0, float(preset_values.get("C", 1.4)), 0.1),
+            "epsilon": st.slider("容忍带宽度", 0.05, 0.60, float(preset_values.get("epsilon", 0.22)), 0.01),
             "kernel": st.selectbox(
                 "核函数",
                 options=["linear", "rbf", "poly"],
                 format_func=lambda item: {"linear": "线性核", "rbf": "RBF 核", "poly": "多项式核"}[item],
+                index=["linear", "rbf", "poly"].index(preset_values.get("kernel", "linear")),
             ),
-            "gamma": st.slider("核函数影响范围", 0.10, 2.50, 0.80, 0.05),
+            "gamma": st.slider("核函数影响范围", 0.10, 2.50, float(preset_values.get("gamma", 0.80)), 0.05),
         }
     if algorithm_key == "tree":
         return {
-            "max_depth": st.slider("最大深度", 1, 10, 4, 1),
-            "min_samples_split": st.slider("分裂所需最少样本数", 2, 20, 6, 1),
+            "max_depth": st.slider("最大深度", 1, 10, int(preset_values.get("max_depth", 4)), 1),
+            "min_samples_split": st.slider("分裂所需最少样本数", 2, 20, int(preset_values.get("min_samples_split", 6)), 1),
         }
     return {
-        "n_estimators": st.slider("树的数量", 5, 41, 21, 2),
-        "max_depth": st.slider("最大深度", 2, 10, 5, 1),
-        "min_samples_split": st.slider("分裂所需最少样本数", 2, 20, 6, 1),
+        "n_estimators": st.slider("树的数量", 5, 41, int(preset_values.get("n_estimators", 21)), 2),
+        "max_depth": st.slider("最大深度", 2, 10, int(preset_values.get("max_depth", 5)), 1),
+        "min_samples_split": st.slider("分裂所需最少样本数", 2, 20, int(preset_values.get("min_samples_split", 6)), 1),
     }
 
 
@@ -647,6 +805,151 @@ def default_noise(algorithm_key):
         "rf": 0.16,
     }
     return mapping[algorithm_key]
+
+
+def build_regression_parameter_explanations(algorithm_key, params, noise, test_size):
+    """Create cautious, rule-based explanations for the current controls."""
+    explanations = [
+        "噪声强度为 {0:.2f}：噪声越高，观测点偏离趋势的可能性通常越大，建议结合残差图观察。".format(noise),
+        "测试集比例为 {0:.0%}：它决定用于检验泛化表现的样本占比。".format(test_size),
+    ]
+    if algorithm_key == "linear":
+        explanations.append("偏置项={0}、标准化={1}：建议分别切换一个选项，观察拟合曲线和指标是否稳定。".format(
+            "开启" if params["fit_intercept"] else "关闭",
+            "开启" if params["standardize"] else "关闭",
+        ))
+    elif algorithm_key == "poly":
+        degree = int(params["degree"])
+        if degree >= 7:
+            explanations.append("多项式阶数为 {0}：阶数较高时曲线可能更灵活，也可能更贴近噪声。".format(degree))
+        elif degree <= 3:
+            explanations.append("多项式阶数为 {0}：曲线相对简洁，可能无法表达复杂的局部变化。".format(degree))
+        else:
+            explanations.append("多项式阶数为 {0}：建议逐步调整阶数，比较曲线平滑度与残差分布。".format(degree))
+    elif algorithm_key in ("ridge", "lasso"):
+        alpha = float(params["alpha"])
+        explanations.append("正则化强度 alpha={0:.2f}：数值增大通常会更强地约束模型参数，拟合曲线可能更平滑。".format(alpha))
+        if algorithm_key == "lasso":
+            explanations.append("Lasso 还可能把部分系数压到接近零，建议结合误差指标观察信息保留情况。")
+    elif algorithm_key == "svr":
+        explanations.append("C={0:.1f}、epsilon={1:.2f}：C 控制误差惩罚，epsilon 定义容忍带宽度，建议一次只改变一个。".format(
+            float(params["C"]), float(params["epsilon"])
+        ))
+        explanations.append("当前核函数为 {0}，gamma={1:.2f}：gamma 较大时局部影响可能更明显。".format(
+            params["kernel"], float(params["gamma"])
+        ))
+    elif algorithm_key == "tree":
+        explanations.append("最大深度={0}、最小分裂样本={1}：树更深或更易分裂时可能捕捉更多局部细节。".format(
+            int(params["max_depth"]), int(params["min_samples_split"])
+        ))
+    else:
+        explanations.append("树数量={0}：更多树通常会让集成预测更稳定，但计算量也会增加。".format(int(params["n_estimators"])))
+        explanations.append("最大深度={0}、最小分裂样本={1}：建议结合单树与森林的残差差异观察。".format(
+            int(params["max_depth"]), int(params["min_samples_split"])
+        ))
+    return explanations
+
+
+def build_regression_observation(lab_result):
+    metrics = lab_result["metrics"]
+    train_r2 = float(metrics["train_r2"])
+    test_r2 = float(metrics["test_r2"])
+    observation = [
+        "当前训练 R² {0:.3f}，测试 R² {1:.3f}；测试 MAE {2:.3f}，RMSE {3:.3f}。".format(
+            train_r2, test_r2, float(metrics["test_mae"]), float(metrics["test_rmse"])
+        ),
+        "建议先看拟合曲线，再检查残差是否在某些区间持续偏正或偏负。",
+    ]
+    if train_r2 - test_r2 >= 0.15:
+        observation.append("训练与测试 R² 差距相对明显，可能存在泛化不稳定现象，建议尝试降低复杂度或增加正则化。")
+    else:
+        observation.append("当前训练与测试 R² 差距不大，可继续切换数据集验证趋势是否稳定。")
+    return observation
+
+
+def build_regression_comparison(primary_result, compare_algorithm):
+    """Fit a second existing regressor on the primary run's exact split."""
+    dataset_key = primary_result["dataset_key"]
+    params = _regression_preset_values(compare_algorithm, "标准示例")
+    X_train = primary_result["X_train"]
+    X_test = primary_result["X_test"]
+    y_train = primary_result["y_train"]
+    y_test = primary_result["y_test"]
+    x_train = primary_result["x_train"]
+    x_test = primary_result["x_test"]
+    x_grid = primary_result["visual_context"]["x_grid"]
+    model = build_regressor(compare_algorithm, params)
+    model.fit(X_train, y_train)
+    y_train_pred = model.predict(X_train)
+    y_test_pred = model.predict(X_test)
+    X_grid = build_plot_features(dataset_key, x_grid)
+    y_grid_pred = model.predict(X_grid)
+    metrics = build_regression_metrics(y_train, y_train_pred, y_test, y_test_pred)
+    focus_index = st.session_state["reg_lab_view_nonce"] % len(X_test)
+    x_test_sort_index = np.argsort(x_test)
+    context = {
+        "visual_title": ALGORITHM_LABELS[compare_algorithm],
+        "x_train": x_train,
+        "x_test": x_test,
+        "y_train": y_train,
+        "y_test": y_test,
+        "y_train_pred": y_train_pred,
+        "y_test_pred": y_test_pred,
+        "x_grid": x_grid,
+        "y_grid_pred": y_grid_pred,
+        "y_grid_true": primary_result["visual_context"]["y_grid_true"],
+        "focus_x": float(x_test[focus_index]),
+        "focus_true": float(y_test[focus_index]),
+        "focus_pred": float(y_test_pred[focus_index]),
+        "focus_residual": float(y_test_pred[focus_index] - y_test[focus_index]),
+        "residual_demo_indices": np.argsort(np.abs(y_test_pred - y_test))[::-1].tolist(),
+        "x_test_sorted": x_test[x_test_sort_index],
+        "x_test_sort_index": x_test_sort_index,
+        "y_test_sorted": y_test[x_test_sort_index],
+        "y_test_pred_sorted": y_test_pred[x_test_sort_index],
+        "metrics": metrics,
+        "x_axis_label": "输入特征 x",
+        "y_axis_label": "目标值 y",
+        "residual_axis_label": "残差",
+        "focus_x_label": "输入特征",
+        "true_value_label": "真实值",
+        "pred_value_label": "预测值",
+    }
+    # Feature labels are presentation-only for the comparison panel; the
+    # primary algorithm and its original metadata remain untouched.
+    feature_names = ["特征 {0}".format(index + 1) for index in range(X_train.shape[1])]
+    extras = build_algorithm_extras(
+        algorithm_key=compare_algorithm,
+        params=params,
+        model=model,
+        X_train=X_train,
+        y_train=y_train,
+        X_test=X_test,
+        y_test=y_test,
+        y_train_pred=y_train_pred,
+        y_test_pred=y_test_pred,
+        x_grid=x_grid,
+        feature_names=feature_names,
+        dataset_key=dataset_key,
+    )
+    if compare_algorithm == "rf":
+        extras["forest_gain"] = float(metrics["test_r2"] - extras["single_tree_metrics"]["test_r2"])
+    context.update(extras)
+    return {"algorithm_key": compare_algorithm, "metrics": metrics, "visual_context": context}
+
+
+def render_regression_comparison(primary_result, compare_algorithm):
+    comparison = build_regression_comparison(primary_result, compare_algorithm)
+    st.markdown("### 基础算法对比")
+    st.caption("两种算法复用同一数据集、同一 train/test split 和当前页面随机种子；对比算法使用原始默认参数。")
+    columns = st.columns(2, gap="medium")
+    entries = [(primary_result["algorithm_key"], primary_result), (compare_algorithm, comparison)]
+    for column, (algorithm_key, result) in zip(columns, entries):
+        with column:
+            st.markdown("#### {0}".format(ALGORITHM_LABELS[algorithm_key]))
+            visual = render_main_visual(algorithm_key, result["visual_context"])
+            render_visual_output(visual, "对比主图未成功生成，请稍后重试。")
+            st.metric("测试 R²", "{0:.3f}".format(float(result["metrics"]["test_r2"])))
 
 
 def build_lab_result(algorithm_key, dataset_key, sample_count, noise, test_size, params):

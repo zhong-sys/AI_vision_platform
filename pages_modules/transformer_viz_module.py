@@ -9,6 +9,14 @@ import numpy as np
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
 
+from components.experiment_panel import (
+    render_experiment_guide,
+    render_learning_goals,
+    render_observation,
+    render_parameter_explanation,
+)
+from components.page_header import render_page_header
+
 
 _BG = (15, 23, 42)
 _TEXT = (230, 230, 230)
@@ -469,13 +477,28 @@ def draw_transformer_vs_rnn_cnn() -> Image.Image:
 
 def nv_render_transformer_viz():
     """渲染 Transformer 教学页面（静态图 + 文字详解）。"""
-    st.title("注意力机制网络（Transformer）")
-    st.caption("不再按顺序传递记忆，而是让所有位置直接建立关联")
-
-    if st.button("🏠 返回首页", key="trans_back_home", use_container_width=False):
-        st.session_state.current_page = "home"
-        st.rerun()
-    st.markdown("---")
+    render_page_header(
+        title="注意力机制网络（Transformer）",
+        module="神经网络 / Transformer",
+        description="不再按顺序传递记忆，而是让所有位置直接建立关联",
+        back_key="trans_back_home",
+    )
+    render_learning_goals(
+        [
+            "理解 Q、K、V 如何形成自注意力权重。",
+            "观察多头注意力、残差连接和位置编码的作用。",
+            "区分 Encoder、Decoder 与 Cross-Attention 的信息流。",
+            "比较 Transformer 与 CNN、RNN 的建模路径。",
+        ]
+    )
+    render_experiment_guide(
+        [
+            "先阅读整体 Encoder-Decoder 图，标出输入和输出路径。",
+            "再沿 Q/K/V 流程观察相关性分数与加权汇总。",
+            "查看 Masked Attention 与 Cross-Attention 的差异。",
+            "最后结合位置编码和对比图总结全局建模特点。",
+        ]
+    )
     st.subheader("为什么需要它？")
     st.info(
         "RNN 需要逐步递推，长距离依赖会在多步传递中衰减。"
@@ -604,3 +627,16 @@ def nv_render_transformer_viz():
             "CNN 在空间上“局部到全局”；RNN 在时间上“逐步传递”；"
             "Transformer 在单层内就可以“全局互看”，因此更容易捕获远距离关系。"
         )
+
+    render_parameter_explanation(
+        [
+            "本页为固定结构演示，没有可调算法参数；建议重点观察不同注意力路径的连接范围。",
+            "位置编码补充顺序信息，多头机制提供多个关系视角，具体作用可结合图中连线阅读。",
+        ]
+    )
+    render_observation(
+        [
+            "当前页面展示的是固定示意图与公式，不生成额外模型指标。",
+            "建议先理解信息流，再将其与 RNN 的逐步递推和 CNN 的局部感受野进行对照。",
+        ]
+    )

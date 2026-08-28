@@ -11,6 +11,15 @@ import numpy as np
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
+from components.experiment_panel import (
+    render_experiment_guide,
+    render_learning_goals,
+    render_observation,
+    render_parameter_explanation,
+    render_preset_controls,
+)
+from components.page_header import render_page_header
+
 
 # ===================== 常量与配置 =====================
 
@@ -32,6 +41,62 @@ _PALETTE_BG_DARK = (26, 26, 26)               # #1a1a1a
 _POOL_CELL_SIZE = 32
 _POOL_SCAN_INTERVAL_SEC = 0.18  # 池化自动播放固定间隔（较慢，便于观察）
 _CONV_DISPLAY_WIDTH = 300
+
+
+CNN_PRESETS = {
+    "标准示例": "使用固定示例图和默认边缘核，适合先熟悉逐格卷积。",
+    "边缘增强": "切换组合边缘核，观察水平与垂直响应的叠加。",
+    "平滑纹理": "使用棋盘纹理和均值核，观察平滑与池化的效果。",
+    "池化对照": "保留边缘核，比较最大池化和平均池化的输出差异。",
+}
+
+
+def _cnn_preset_values(preset_name):
+    values = {
+        "conv_image_source": "具体图像",
+        "conv_kernel_name": "边缘检测（Laplacian 8邻域）",
+        "conv_enable_gaussian": True,
+        "pool_type": "最大池化",
+        "conv_scan_speed": 0.01,
+    }
+    if preset_name == "边缘增强":
+        values.update({"conv_kernel_name": _COMBINED_KERNEL_NAME, "conv_enable_gaussian": False})
+    elif preset_name == "平滑纹理":
+        values.update({
+            "conv_image_source": "checkerboard",
+            "conv_kernel_name": "模糊（均值）",
+            "conv_enable_gaussian": True,
+            "pool_type": "平均池化",
+        })
+    elif preset_name == "池化对照":
+        values.update({"pool_type": "平均池化", "conv_scan_speed": 0.02})
+    return values
+
+
+def _apply_cnn_preset():
+    preset_name = st.session_state.get("cnn_teaching_preset", "标准示例")
+    for key, value in _cnn_preset_values(preset_name).items():
+        st.session_state[key] = value
+    st.session_state["conv_row"] = 0
+    st.session_state["conv_col"] = 0
+    st.session_state["pool_window_row"] = 0
+    st.session_state["pool_window_col"] = 0
+    st.session_state["is_scanning"] = False
+    st.session_state["is_pool_scanning"] = False
+
+
+def _reset_cnn_defaults():
+    for key, value in _cnn_preset_values("标准示例").items():
+        st.session_state[key] = value
+    st.session_state["cnn_teaching_preset"] = "标准示例"
+    st.session_state["conv_row"] = 0
+    st.session_state["conv_col"] = 0
+    st.session_state["pool_window_row"] = 0
+    st.session_state["pool_window_col"] = 0
+    st.session_state["is_scanning"] = False
+    st.session_state["is_pool_scanning"] = False
+    st.session_state["scan_position"] = (0, 0)
+    st.session_state["pool_scan_position"] = (0, 0)
 
 
 # ===================== 跨平台字体加载 =====================
@@ -715,8 +780,35 @@ def _render_conv_scan_logic(h_out: int, w_out: int, img_arr: np.ndarray, kernel_
 
 def nv_render_cnn_viz():
     """渲染 CNN 交互教学页面。"""
-    st.title("卷积神经网络（CNN）")
-    st.caption("交互式探索卷积核滑动与池化压缩的核心机制")
+    render_page_header(
+        title="卷积神经网络（CNN）",
+        module="神经网络 / CNN",
+        description="交互式探索卷积核滑动与池化压缩的核心机制",
+    )
+
+    render_learning_goals(
+        [
+            "理解卷积核如何在局部感受野内提取边缘与纹理。",
+            "观察高斯预处理、不同卷积核和特征图响应的关系。",
+            "区分最大池化与平均池化的信息压缩方式。",
+            "把逐格计算与 CNN 的层次化特征提取联系起来。",
+        ]
+    )
+    render_experiment_guide(
+        [
+            "从“标准示例”开始，先点击单步查看一个 3×3 感受野。",
+            "切换一个卷积核，比较公式、响应值和全图特征。",
+            "再比较最大池化与平均池化，观察输出尺寸和亮度变化。",
+            "最后播放扫描过程，联系局部操作与整幅特征图。",
+        ]
+    )
+    render_preset_controls(
+        CNN_PRESETS,
+        key="cnn_teaching_preset",
+        reset_key="cnn_teaching_reset",
+        on_preset_change=_apply_cnn_preset,
+        on_reset=_reset_cnn_defaults,
+    )
 
     # ---- 为什么需要它 ----
     st.subheader("为什么需要它？")
@@ -1019,6 +1111,22 @@ def nv_render_cnn_viz():
 **说明**：真实网络可有不同 padding、stride、通道数，具体尺寸不必与此链完全一致；此处用一条**可手算核对**的尺寸链，将前面「卷积滑动 / 池化窗口」的微观操作与「整网空间如何逐级变小」的宏观图景对齐。
             """
         )
+
+    render_parameter_explanation(
+        [
+            "当前卷积核为“{0}”：建议观察它对水平、垂直或局部强度变化的响应。".format(kernel_name),
+            "高斯预处理={0}：开启时通常会先平滑局部噪声，建议与关闭状态做一次对照。".format(
+                "开启" if enable_gaussian else "关闭"
+            ),
+            "池化方式为“{0}”：最大池化偏向保留强响应，平均池化更关注窗口的整体能量。".format(pool_type),
+        ]
+    )
+    render_observation(
+        [
+            "当前卷积输出尺寸为 {0}×{1}，池化输出尺寸为 {2}×{3}。".format(h_out, w_out, p_out_h, p_out_w),
+            "建议先单步推进几个位置，再播放完整扫描，比较局部计算与累积特征图。",
+        ]
+    )
 
 
 if __name__ == "__main__":
